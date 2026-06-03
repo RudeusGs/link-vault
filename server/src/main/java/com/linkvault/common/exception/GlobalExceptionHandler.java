@@ -6,11 +6,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -69,9 +70,21 @@ public class GlobalExceptionHandler {
         return ApiResponse.failure(exception.getMessage(), null);
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<Void> handleUnauthorized(UnauthorizedException exception) {
+        return ApiResponse.failure(exception.getMessage(), null);
+    }
+
+    @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiResponse<Void> handleForbidden(RuntimeException exception) {
+        return ApiResponse.failure(exception.getMessage(), null);
+    }
+
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleRuntime(RuntimeException exception) {
-        return ApiResponse.failure(exception.getMessage(), null);
+        return ApiResponse.failure("Internal server error", null);
     }
 }

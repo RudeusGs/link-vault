@@ -3,7 +3,9 @@ package com.linkvault.users;
 import com.linkvault.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,7 +14,13 @@ import lombok.Setter;
 @Setter
 @Entity
 @NoArgsConstructor
-@Table(name = "users")
+@Table(
+    name = "users",
+    indexes = {
+        @Index(name = "idx_users_username", columnList = "username"),
+        @Index(name = "idx_users_email", columnList = "email")
+    }
+)
 public class User extends BaseEntity {
 
     @Column(nullable = false, unique = true, length = 100)
@@ -29,4 +37,13 @@ public class User extends BaseEntity {
 
     @Column(length = 500)
     private String avatarUrl;
+
+    private Boolean isVerified = true;
+
+    private Boolean isEnabled = true;
+
+    @Column(length = 30)
+    private String authProvider = "LOCAL";
+
+    private Instant lastLoginAt;
 }

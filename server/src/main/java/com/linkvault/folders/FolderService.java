@@ -1,11 +1,13 @@
 package com.linkvault.folders;
 
 import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.resources.Resource;
 import com.linkvault.resources.ResourceRepository;
 import com.linkvault.resources.ResourceTagRepository;
 import com.linkvault.resources.ResourceViewRepository;
+import com.linkvault.users.UserContextService;
 import com.linkvault.vaults.Vault;
 import com.linkvault.vaults.VaultService;
 import java.util.List;
@@ -21,23 +23,27 @@ public class FolderService {
     private final ResourceTagRepository resourceTagRepository;
     private final ResourceViewRepository resourceViewRepository;
     private final VaultService vaultService;
+    private final UserContextService userContextService;
 
     public FolderService(
         FolderRepository folderRepository,
         ResourceRepository resourceRepository,
         ResourceTagRepository resourceTagRepository,
         ResourceViewRepository resourceViewRepository,
-        VaultService vaultService
+        VaultService vaultService,
+        UserContextService userContextService
     ) {
         this.folderRepository = folderRepository;
         this.resourceRepository = resourceRepository;
         this.resourceTagRepository = resourceTagRepository;
         this.resourceViewRepository = resourceViewRepository;
         this.vaultService = vaultService;
+        this.userContextService = userContextService;
     }
 
     @Transactional(readOnly = true)
     public List<FolderResponse> listByVault(UUID vaultId) {
+        vaultService.getVault(vaultId);
         return folderRepository.findByVault_IdOrderBySortOrderAscNameAsc(vaultId).stream()
             .map(this::toResponse)
             .toList();
@@ -45,7 +51,8 @@ public class FolderService {
 
     @Transactional(readOnly = true)
     public List<FolderResponse> listChildren(UUID parentId) {
-        return folderRepository.findByParent_IdOrderBySortOrderAscNameAsc(parentId).stream()
+        Folder parent = getFolder(parentId);
+        return folderRepository.findByParent_IdOrderBySortOrderAscNameAsc(parent.getId()).stream()
             .map(this::toResponse)
             .toList();
     }
@@ -56,16 +63,28 @@ public class FolderService {
     }
 
     @Transactional
-    public FolderResponse create(FolderRequest request) {
+    public FolderResponse createInVault(UUID vaultId, FolderRequest request) {
+        Vault vault = vaultService.getVault(vaultId);
+
         Folder folder = new Folder();
-        applyRequest(folder, request);
+        applyRequest(folder, request, vault, null);
+        return toResponse(folderRepository.save(folder));
+    }
+
+    @Transactional
+    public FolderResponse createChild(UUID parentId, FolderRequest request) {
+        Folder parent = getFolder(parentId);
+
+        Folder folder = new Folder();
+        applyRequest(folder, request, parent.getVault(), parent);
         return toResponse(folderRepository.save(folder));
     }
 
     @Transactional
     public FolderResponse update(UUID id, FolderRequest request) {
         Folder folder = getFolder(id);
-        applyRequest(folder, request);
+
+        applyRequest(folder, request, folder.getVault(), folder.getParent());
         return toResponse(folderRepository.save(folder));
     }
 
@@ -77,8 +96,10 @@ public class FolderService {
 
     @Transactional(readOnly = true)
     public Folder getFolder(UUID id) {
-        return folderRepository.findById(id)
+        Folder folder = folderRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Folder not found"));
+        ensureOwner(folder);
+        return folder;
     }
 
     public FolderResponse toResponse(Folder folder) {
@@ -95,20 +116,40 @@ public class FolderService {
         );
     }
 
-    private void applyRequest(Folder folder, FolderRequest request) {
-        Vault vault = vaultService.getVault(request.vaultId());
-        Folder parent = request.parentId() == null ? null : getFolder(request.parentId());
-
-        if (parent != null && !parent.getVault().getId().equals(vault.getId())) {
-            throw new BadRequestException("Parent folder must belong to the same vault");
-        }
+    private void applyRequest(Folder folder, FolderRequest request, Vault vault, Folder parent) {
+        String name = normalizeName(request.name());
+        ensureNameAvailable(vault.getId(), parent == null ? null : parent.getId(), name, folder.getId());
 
         folder.setVault(vault);
         folder.setParent(parent);
-        folder.setName(request.name().trim());
-        folder.setDescription(request.description());
-        folder.setIcon(request.icon());
+        folder.setName(name);
+        folder.setDescription(trimToNull(request.description()));
+        folder.setIcon(trimToNull(request.icon()));
         folder.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+    }
+
+    private void ensureNameAvailable(UUID vaultId, UUID parentId, String name, UUID excludedFolderId) {
+        boolean exists;
+        if (parentId == null) {
+            exists = excludedFolderId == null
+                ? folderRepository.existsByVault_IdAndParentIsNullAndNameIgnoreCase(vaultId, name)
+                : folderRepository.existsByVault_IdAndParentIsNullAndNameIgnoreCaseAndIdNot(vaultId, name, excludedFolderId);
+        } else {
+            exists = excludedFolderId == null
+                ? folderRepository.existsByVault_IdAndParent_IdAndNameIgnoreCase(vaultId, parentId, name)
+                : folderRepository.existsByVault_IdAndParent_IdAndNameIgnoreCaseAndIdNot(vaultId, parentId, name, excludedFolderId);
+        }
+
+        if (exists) {
+            throw new BadRequestException("Folder name already exists in this location");
+        }
+    }
+
+    private void ensureOwner(Folder folder) {
+        UUID currentUserId = userContextService.getCurrentUser().getId();
+        if (!folder.getVault().getUser().getId().equals(currentUserId)) {
+            throw new ForbiddenException("You do not have access to this folder");
+        }
     }
 
     private void deleteFolderTree(Folder folder) {
@@ -122,5 +163,19 @@ public class FolderService {
         }
         resourceRepository.deleteAll(resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId()));
         folderRepository.delete(folder);
+    }
+
+    private String normalizeName(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException("Folder name is required");
+        }
+        return value.trim();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

@@ -1,5 +1,7 @@
 package com.linkvault.tags;
 
+import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.resources.ResourceTagRepository;
 import com.linkvault.users.User;
@@ -29,7 +31,7 @@ public class TagService {
 
     @Transactional(readOnly = true)
     public List<TagResponse> listTags() {
-        UUID userId = userContextService.getDemoUser().getId();
+        UUID userId = userContextService.getCurrentUser().getId();
         return tagRepository.findByUser_IdOrderByNameAsc(userId).stream()
             .map(this::toResponse)
             .toList();
@@ -37,7 +39,8 @@ public class TagService {
 
     @Transactional
     public TagResponse create(TagRequest request) {
-        User user = userContextService.getDemoUser();
+        User user = userContextService.getCurrentUser();
+        ensureNameAvailable(user.getId(), request.name(), null);
 
         Tag tag = new Tag();
         tag.setUser(user);
@@ -49,6 +52,7 @@ public class TagService {
     @Transactional
     public TagResponse update(UUID id, TagRequest request) {
         Tag tag = getTag(id);
+        ensureNameAvailable(tag.getUser().getId(), request.name(), tag.getName());
         applyRequest(tag, request);
         return toResponse(tagRepository.save(tag));
     }
@@ -62,8 +66,10 @@ public class TagService {
 
     @Transactional(readOnly = true)
     public Tag getTag(UUID id) {
-        return tagRepository.findById(id)
+        Tag tag = tagRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Tag not found"));
+        ensureOwner(tag);
+        return tag;
     }
 
     public TagResponse toResponse(Tag tag) {
@@ -81,6 +87,23 @@ public class TagService {
             .sorted(Comparator.comparingLong(TagResponse::usageCount).reversed())
             .limit(limit)
             .toList();
+    }
+
+    private void ensureNameAvailable(UUID userId, String requestedName, String currentName) {
+        String normalized = requestedName == null ? "" : requestedName.trim();
+        if (currentName != null && currentName.equalsIgnoreCase(normalized)) {
+            return;
+        }
+        if (tagRepository.existsByUser_IdAndNameIgnoreCase(userId, normalized)) {
+            throw new BadRequestException("Tag name already exists");
+        }
+    }
+
+    private void ensureOwner(Tag tag) {
+        UUID currentUserId = userContextService.getCurrentUser().getId();
+        if (!tag.getUser().getId().equals(currentUserId)) {
+            throw new ForbiddenException("You do not have access to this tag");
+        }
     }
 
     private void applyRequest(Tag tag, TagRequest request) {

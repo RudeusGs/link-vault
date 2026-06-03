@@ -30,8 +30,6 @@ export interface Resource {
 }
 
 export interface ResourceRequest {
-  vaultId: string;
-  folderId?: string | null;
   title: string;
   description?: string;
   resourceType: ResourceType;

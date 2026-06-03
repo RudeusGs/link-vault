@@ -22,8 +22,12 @@ export class FolderService {
     return this.api.get<Folder>(`/folders/${id}`);
   }
 
-  create(request: FolderRequest): Observable<Folder> {
-    return this.api.post<Folder>('/folders', request);
+  createInVault(vaultId: string, request: FolderRequest): Observable<Folder> {
+    return this.api.post<Folder>(`/vaults/${vaultId}/folders`, request);
+  }
+
+  createChild(parentId: string, request: FolderRequest): Observable<Folder> {
+    return this.api.post<Folder>(`/folders/${parentId}/children`, request);
   }
 
   update(id: string, request: FolderRequest): Observable<Folder> {

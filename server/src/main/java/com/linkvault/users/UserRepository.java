@@ -8,5 +8,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findFirstByOrderByCreatedAtAsc();
 
-    boolean existsByUsername(String username);
+    Optional<User> findByEmailIgnoreCase(String email);
+
+    Optional<User> findByUsernameIgnoreCase(String username);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByUsernameIgnoreCase(String username);
 }

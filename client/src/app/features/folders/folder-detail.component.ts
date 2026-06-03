@@ -28,6 +28,7 @@ import { ResourceListComponent } from '../resources/resource-list.component';
       <section class="grid cols-2">
         <article class="panel stack">
           <h2>Create child folder</h2>
+          <p class="muted">Child folder will be created under this folder automatically.</p>
           <form class="form-grid" (ngSubmit)="createFolder()">
             <label>
               Name
@@ -104,7 +105,7 @@ export class FolderDetailComponent implements OnInit {
     this.folderService.get(folderId).subscribe({
       next: (folder) => {
         this.folder = folder;
-        this.folderForm = this.emptyFolderForm(folder);
+        this.folderForm = this.emptyFolderForm();
       },
       error: (error) => (this.error = error instanceof Error ? error.message : 'Could not load folder')
     });
@@ -116,8 +117,14 @@ export class FolderDetailComponent implements OnInit {
   }
 
   protected createFolder(): void {
-    this.folderService.create(this.folderForm).subscribe({
+    if (!this.folder?.id) {
+      this.error = 'Folder context is missing';
+      return;
+    }
+
+    this.folderService.createChild(this.folder.id, this.folderForm).subscribe({
       next: () => {
+        this.folderForm = this.emptyFolderForm();
         this.load();
       },
       error: (error) => (this.error = error instanceof Error ? error.message : 'Could not create folder')
@@ -135,10 +142,8 @@ export class FolderDetailComponent implements OnInit {
     });
   }
 
-  private emptyFolderForm(folder?: Folder): FolderRequest {
+  private emptyFolderForm(): FolderRequest {
     return {
-      vaultId: folder?.vaultId ?? '',
-      parentId: folder?.id ?? null,
       name: '',
       description: '',
       icon: 'folder',

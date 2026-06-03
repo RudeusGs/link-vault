@@ -22,7 +22,8 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
 
     @Query("""
         select distinct r from Resource r
-        where (:keyword is null
+        where r.vault.user.id = :userId
+        and (:keyword is null
             or lower(r.title) like lower(concat('%', :keyword, '%'))
             or lower(coalesce(r.description, '')) like lower(concat('%', :keyword, '%'))
             or lower(coalesce(r.url, '')) like lower(concat('%', :keyword, '%'))
@@ -38,6 +39,7 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
         order by r.createdAt desc
         """)
     List<Resource> search(
+        @Param("userId") UUID userId,
         @Param("keyword") String keyword,
         @Param("type") ResourceType type,
         @Param("tagId") UUID tagId,

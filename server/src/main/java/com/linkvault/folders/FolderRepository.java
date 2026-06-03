@@ -12,5 +12,13 @@ public interface FolderRepository extends JpaRepository<Folder, UUID> {
 
     List<Folder> findByParent_IdOrderBySortOrderAscNameAsc(UUID parentId);
 
+    boolean existsByVault_IdAndParentIsNullAndNameIgnoreCase(UUID vaultId, String name);
+
+    boolean existsByVault_IdAndParentIsNullAndNameIgnoreCaseAndIdNot(UUID vaultId, String name, UUID id);
+
+    boolean existsByVault_IdAndParent_IdAndNameIgnoreCase(UUID vaultId, UUID parentId, String name);
+
+    boolean existsByVault_IdAndParent_IdAndNameIgnoreCaseAndIdNot(UUID vaultId, UUID parentId, String name, UUID id);
+
     long countByVault_User_Id(UUID userId);
 }

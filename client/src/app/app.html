@@ -1,31 +1,47 @@
-<div class="app-shell">
-  <aside class="sidebar" aria-label="Primary navigation">
-    <a class="brand" routerLink="/dashboard" aria-label="LinkVault dashboard">
-      <span class="brand-mark">LV</span>
-      <span>LinkVault</span>
-    </a>
+<ng-container *ngIf="isAuthPage(); else appShell">
+  <router-outlet />
+</ng-container>
 
-    <nav class="nav-list">
-      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-      <a routerLink="/vaults" routerLinkActive="active">Vaults</a>
-      <a routerLink="/tags" routerLinkActive="active">Tags</a>
-    </nav>
+<ng-template #appShell>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="brand" routerLink="/dashboard" aria-label="LinkVault dashboard">
+        <span class="brand-mark">LV</span>
+        <span>LinkVault</span>
+      </a>
 
-    <div
-      class="health"
-      [class.checking]="healthState() === 'checking'"
-      [class.online]="healthState() === 'online'"
-      [class.offline]="healthState() === 'offline'"
-    >
-      <span class="health-dot" aria-hidden="true"></span>
-      <div>
-        <strong>{{ healthState() }}</strong>
-        <span>{{ healthMessage() }}</span>
+      <nav class="nav-list">
+        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/vaults" routerLinkActive="active">Vaults</a>
+        <a routerLink="/tags" routerLinkActive="active">Tags</a>
+      </nav>
+
+      <section class="account-card" *ngIf="auth.currentUser() as user">
+        <div class="avatar">{{ initials(user.displayName || user.username) }}</div>
+        <div class="account-info">
+          <strong>{{ user.displayName || user.username }}</strong>
+          <span>@{{ user.username }}</span>
+        </div>
+      </section>
+
+      <div
+        class="health"
+        [class.checking]="healthState() === 'checking'"
+        [class.online]="healthState() === 'online'"
+        [class.offline]="healthState() === 'offline'"
+      >
+        <span class="health-dot" aria-hidden="true"></span>
+        <div>
+          <strong>{{ healthState() }}</strong>
+          <span>{{ healthMessage() }}</span>
+        </div>
       </div>
-    </div>
-  </aside>
 
-  <main class="workspace">
-    <router-outlet />
-  </main>
-</div>
+      <button class="logout-btn" type="button" (click)="logout()">Logout</button>
+    </aside>
+
+    <main class="workspace">
+      <router-outlet />
+    </main>
+  </div>
+</ng-template>

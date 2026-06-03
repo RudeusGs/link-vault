@@ -13,5 +13,4 @@ public record FolderResponse(
     Integer sortOrder,
     Instant createdAt,
     Instant updatedAt
-) {
-}
+){}

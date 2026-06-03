@@ -30,6 +30,7 @@ import { ResourceListComponent } from '../resources/resource-list.component';
       <section class="grid cols-2">
         <article class="panel stack">
           <h2>Create folder</h2>
+          <p class="muted">Folder will be created inside this vault. No manual ID input needed.</p>
           <form class="form-grid" (ngSubmit)="createFolder()">
             <label>
               Name
@@ -114,7 +115,12 @@ export class VaultDetailComponent implements OnInit {
   }
 
   protected createFolder(): void {
-    this.folderService.create(this.folderForm).subscribe({
+    if (!this.vaultId) {
+      this.error = 'Vault context is missing';
+      return;
+    }
+
+    this.folderService.createInVault(this.vaultId, this.folderForm).subscribe({
       next: () => {
         this.folderForm = this.emptyFolderForm();
         this.load();
@@ -136,8 +142,6 @@ export class VaultDetailComponent implements OnInit {
 
   private emptyFolderForm(): FolderRequest {
     return {
-      vaultId: this.vaultId,
-      parentId: null,
       name: '',
       description: '',
       icon: 'folder',

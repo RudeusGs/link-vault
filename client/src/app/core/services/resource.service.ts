@@ -35,8 +35,12 @@ export class ResourceService {
     return this.api.get<Resource>(`/resources/${id}`);
   }
 
-  create(request: ResourceRequest): Observable<Resource> {
-    return this.api.post<Resource>('/resources', request);
+  createInVault(vaultId: string, request: ResourceRequest): Observable<Resource> {
+    return this.api.post<Resource>(`/vaults/${vaultId}/resources`, request);
+  }
+
+  createInFolder(folderId: string, request: ResourceRequest): Observable<Resource> {
+    return this.api.post<Resource>(`/folders/${folderId}/resources`, request);
   }
 
   update(id: string, request: ResourceRequest): Observable<Resource> {
@@ -59,8 +63,12 @@ export class ResourceService {
     return this.api.post<Resource>(`/resources/${id}/view`, {});
   }
 
-  uploadFile(formData: FormData): Observable<Resource> {
-    return this.api.upload<Resource>('/resources/upload', formData);
+  uploadToVault(vaultId: string, formData: FormData): Observable<Resource> {
+    return this.api.upload<Resource>(`/vaults/${vaultId}/resources/upload`, formData);
+  }
+
+  uploadToFolder(folderId: string, formData: FormData): Observable<Resource> {
+    return this.api.upload<Resource>(`/folders/${folderId}/resources/upload`, formData);
   }
 
   preview(id: string): Observable<ResourcePreview> {

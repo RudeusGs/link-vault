@@ -140,3 +140,54 @@
     padding: 20px;
   }
 }
+
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 999px;
+  color: #183c36;
+  background: #ffffff;
+  font-weight: 800;
+}
+
+.account-info {
+  display: grid;
+  min-width: 0;
+}
+
+.account-info strong,
+.account-info span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-info span {
+  color: #d7e5e1;
+  font-size: 0.82rem;
+}
+
+.logout-btn {
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 800;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

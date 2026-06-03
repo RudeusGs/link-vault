@@ -1,6 +1,7 @@
 package com.linkvault.resources;
 
 import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.folders.Folder;
 import com.linkvault.folders.FolderService;
@@ -60,6 +61,7 @@ public class ResourceService {
 
     @Transactional(readOnly = true)
     public List<ResourceResponse> listByVault(UUID vaultId) {
+        vaultService.getVault(vaultId);
         return resourceRepository.findByVault_IdOrderByCreatedAtDesc(vaultId).stream()
             .map(this::toResponse)
             .toList();
@@ -67,7 +69,8 @@ public class ResourceService {
 
     @Transactional(readOnly = true)
     public List<ResourceResponse> listByFolder(UUID folderId) {
-        return resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folderId).stream()
+        Folder folder = folderService.getFolder(folderId);
+        return resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId()).stream()
             .map(this::toResponse)
             .toList();
     }
@@ -81,7 +84,17 @@ public class ResourceService {
         UUID folderId,
         Boolean favorite
     ) {
-        return resourceRepository.search(cleanKeyword(keyword), type, tagId, vaultId, folderId, favorite).stream()
+        User user = userContextService.getCurrentUser();
+        Vault vault = vaultId == null ? null : vaultService.getVault(vaultId);
+        Folder folder = folderId == null ? null : folderService.getFolder(folderId);
+        if (tagId != null) {
+            tagService.getTag(tagId);
+        }
+        if (vault != null && folder != null && !folder.getVault().getId().equals(vault.getId())) {
+            throw new BadRequestException("Folder must belong to the selected vault");
+        }
+
+        return resourceRepository.search(user.getId(), cleanKeyword(keyword), type, tagId, vaultId, folderId, favorite).stream()
             .map(this::toResponse)
             .toList();
     }
@@ -92,14 +105,15 @@ public class ResourceService {
     }
 
     @Transactional
-    public ResourceResponse create(ResourceRequest request) {
-        if (request.resourceType() == ResourceType.FILE) {
-            throw new BadRequestException("Use /api/resources/upload to create file resources");
-        }
+    public ResourceResponse createInVault(UUID vaultId, ResourceRequest request) {
+        Vault vault = vaultService.getVault(vaultId);
+        return create(request, vault, null);
+    }
 
-        Resource resource = new Resource();
-        applyRequest(resource, request);
-        return toResponse(resourceRepository.save(resource));
+    @Transactional
+    public ResourceResponse createInFolder(UUID folderId, ResourceRequest request) {
+        Folder folder = folderService.getFolder(folderId);
+        return create(request, folder.getVault(), folder);
     }
 
     @Transactional
@@ -110,40 +124,30 @@ public class ResourceService {
             clearFileFields(resource);
         }
 
-        applyRequest(resource, request);
+        applyRequest(resource, request, resource.getVault(), resource.getFolder());
         return toResponse(resourceRepository.save(resource));
     }
 
     @Transactional
-    public ResourceResponse uploadFile(
+    public ResourceResponse uploadFileToVault(
         UUID vaultId,
+        String title,
+        String description,
+        MultipartFile file
+    ) {
+        Vault vault = vaultService.getVault(vaultId);
+        return uploadFile(vault, null, title, description, file);
+    }
+
+    @Transactional
+    public ResourceResponse uploadFileToFolder(
         UUID folderId,
         String title,
         String description,
         MultipartFile file
     ) {
-        if (title == null || title.isBlank()) {
-            throw new BadRequestException("Title is required");
-        }
-
-        Vault vault = vaultService.getVault(vaultId);
-        Folder folder = resolveFolder(folderId, vault);
-        StorageResult storage = storageService.upload(file);
-
-        Resource resource = new Resource();
-        resource.setVault(vault);
-        resource.setFolder(folder);
-        resource.setTitle(title.trim());
-        resource.setDescription(description);
-        resource.setResourceType(ResourceType.FILE);
-        resource.setFileUrl(storage.secureUrl() == null ? storage.url() : storage.secureUrl());
-        resource.setFileName(storage.originalFilename());
-        resource.setFileSize(storage.size());
-        resource.setMimeType(storage.mimeType());
-        resource.setStorageProvider("CLOUDINARY");
-        resource.setStorageKey(storage.publicId());
-
-        return toResponse(resourceRepository.save(resource));
+        Folder folder = folderService.getFolder(folderId);
+        return uploadFile(folder.getVault(), folder, title, description, file);
     }
 
     @Transactional
@@ -171,7 +175,7 @@ public class ResourceService {
     @Transactional
     public ResourceResponse recordView(UUID id) {
         Resource resource = getResource(id);
-        User user = userContextService.getDemoUser();
+        User user = userContextService.getCurrentUser();
 
         ResourceView view = new ResourceView();
         view.setResource(resource);
@@ -200,6 +204,7 @@ public class ResourceService {
     @Transactional
     public ResourceResponse detachTag(UUID resourceId, UUID tagId) {
         Resource resource = getResource(resourceId);
+        tagService.getTag(tagId);
         resourceTagRepository.deleteByResource_IdAndTag_Id(resourceId, tagId);
         return toResponse(resource);
     }
@@ -236,8 +241,10 @@ public class ResourceService {
 
     @Transactional(readOnly = true)
     public Resource getResource(UUID id) {
-        return resourceRepository.findById(id)
+        Resource resource = resourceRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Resource not found"));
+        ensureOwner(resource);
+        return resource;
     }
 
     public ResourceResponse toResponse(Resource resource) {
@@ -276,22 +283,54 @@ public class ResourceService {
         );
     }
 
-    private void applyRequest(Resource resource, ResourceRequest request) {
-        Vault vault = vaultService.getVault(request.vaultId());
-        Folder folder = resolveFolder(request.folderId(), vault);
+    private ResourceResponse create(ResourceRequest request, Vault vault, Folder folder) {
+        if (request.resourceType() == ResourceType.FILE) {
+            throw new BadRequestException("Use upload endpoint to create file resources");
+        }
 
+        Resource resource = new Resource();
+        applyRequest(resource, request, vault, folder);
+        return toResponse(resourceRepository.save(resource));
+    }
+
+    private ResourceResponse uploadFile(
+        Vault vault,
+        Folder folder,
+        String title,
+        String description,
+        MultipartFile file
+    ) {
+        StorageResult storage = storageService.upload(file);
+
+        Resource resource = new Resource();
+        resource.setVault(vault);
+        resource.setFolder(folder);
+        resource.setTitle(resolveTitle(title, storage.originalFilename()));
+        resource.setDescription(trimToNull(description));
+        resource.setResourceType(ResourceType.FILE);
+        resource.setFileUrl(storage.secureUrl() == null ? storage.url() : storage.secureUrl());
+        resource.setFileName(storage.originalFilename());
+        resource.setFileSize(storage.size());
+        resource.setMimeType(storage.mimeType());
+        resource.setStorageProvider("CLOUDINARY");
+        resource.setStorageKey(storage.publicId());
+
+        return toResponse(resourceRepository.save(resource));
+    }
+
+    private void applyRequest(Resource resource, ResourceRequest request, Vault vault, Folder folder) {
         validateRequest(request);
 
         resource.setVault(vault);
         resource.setFolder(folder);
         resource.setTitle(request.title().trim());
-        resource.setDescription(request.description());
+        resource.setDescription(trimToNull(request.description()));
         resource.setResourceType(request.resourceType());
-        resource.setUrl(request.resourceType() == ResourceType.LINK ? request.url() : null);
-        resource.setContent(usesContent(request.resourceType()) ? request.content() : null);
-        resource.setCodeLanguage(request.resourceType() == ResourceType.SNIPPET ? request.codeLanguage() : null);
-        resource.setSourceName(request.resourceType() == ResourceType.LINK ? request.sourceName() : null);
-        resource.setThumbnailUrl(request.resourceType() == ResourceType.LINK ? request.thumbnailUrl() : null);
+        resource.setUrl(request.resourceType() == ResourceType.LINK ? trimToNull(request.url()) : null);
+        resource.setContent(usesContent(request.resourceType()) ? trimToNull(request.content()) : null);
+        resource.setCodeLanguage(request.resourceType() == ResourceType.SNIPPET ? trimToNull(request.codeLanguage()) : null);
+        resource.setSourceName(request.resourceType() == ResourceType.LINK ? trimToNull(request.sourceName()) : null);
+        resource.setThumbnailUrl(request.resourceType() == ResourceType.LINK ? trimToNull(request.thumbnailUrl()) : null);
     }
 
     private void validateRequest(ResourceRequest request) {
@@ -308,17 +347,21 @@ public class ResourceService {
         }
     }
 
-    private Folder resolveFolder(UUID folderId, Vault vault) {
-        if (folderId == null) {
-            return null;
+    private String resolveTitle(String title, String originalFilename) {
+        if (!isBlank(title)) {
+            return title.trim();
         }
-
-        Folder folder = folderService.getFolder(folderId);
-        if (!folder.getVault().getId().equals(vault.getId())) {
-            throw new BadRequestException("Folder must belong to the selected vault");
+        if (!isBlank(originalFilename)) {
+            return originalFilename.trim();
         }
+        throw new BadRequestException("Title or file name is required");
+    }
 
-        return folder;
+    private void ensureOwner(Resource resource) {
+        UUID currentUserId = userContextService.getCurrentUser().getId();
+        if (!resource.getVault().getUser().getId().equals(currentUserId)) {
+            throw new ForbiddenException("You do not have access to this resource");
+        }
     }
 
     private boolean usesContent(ResourceType type) {
@@ -331,6 +374,13 @@ public class ResourceService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String trimToNull(String value) {
+        if (isBlank(value)) {
+            return null;
+        }
+        return value.trim();
     }
 
     private void clearFileFields(Resource resource) {

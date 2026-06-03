@@ -43,7 +43,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardSummaryResponse summary() {
-        User user = userContextService.getDemoUser();
+        User user = userContextService.getCurrentUser();
 
         return new DashboardSummaryResponse(
             vaultRepository.countByUser_Id(user.getId()),

@@ -10,27 +10,33 @@ import com.linkvault.users.UserRepository;
 import com.linkvault.vaults.Vault;
 import com.linkvault.vaults.VaultRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@ConditionalOnProperty(prefix = "app", name = "seed-demo-data", havingValue = "true")
 public class DemoDataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final VaultRepository vaultRepository;
     private final FolderRepository folderRepository;
     private final ResourceRepository resourceRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public DemoDataSeeder(
         UserRepository userRepository,
         VaultRepository vaultRepository,
         FolderRepository folderRepository,
-        ResourceRepository resourceRepository
+        ResourceRepository resourceRepository,
+        PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.vaultRepository = vaultRepository;
         this.folderRepository = folderRepository;
         this.resourceRepository = resourceRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -43,8 +49,11 @@ public class DemoDataSeeder implements CommandLineRunner {
         User user = new User();
         user.setUsername("demo");
         user.setEmail("demo@linkvault.local");
-        user.setPasswordHash("demo-password-not-for-auth");
+        user.setPasswordHash(passwordEncoder.encode("demo123456"));
         user.setDisplayName("Demo User");
+        user.setIsVerified(true);
+        user.setIsEnabled(true);
+        user.setAuthProvider("LOCAL");
         user = userRepository.save(user);
 
         Vault vault = new Vault();

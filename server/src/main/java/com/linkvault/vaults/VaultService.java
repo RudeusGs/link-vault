@@ -1,5 +1,7 @@
 package com.linkvault.vaults;
 
+import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.folders.Folder;
 import com.linkvault.folders.FolderRepository;
@@ -42,7 +44,7 @@ public class VaultService {
 
     @Transactional(readOnly = true)
     public List<VaultResponse> listVaults() {
-        UUID userId = userContextService.getDemoUser().getId();
+        UUID userId = userContextService.getCurrentUser().getId();
         return vaultRepository.findByUser_IdOrderByCreatedAtDesc(userId).stream()
             .map(this::toResponse)
             .toList();
@@ -55,7 +57,7 @@ public class VaultService {
 
     @Transactional
     public VaultResponse create(VaultRequest request) {
-        User user = userContextService.getDemoUser();
+        User user = userContextService.getCurrentUser();
 
         Vault vault = new Vault();
         vault.setUser(user);
@@ -92,8 +94,10 @@ public class VaultService {
 
     @Transactional(readOnly = true)
     public Vault getVault(UUID id) {
-        return vaultRepository.findById(id)
+        Vault vault = vaultRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Vault not found"));
+        ensureOwner(vault);
+        return vault;
     }
 
     public VaultResponse toResponse(Vault vault) {
@@ -108,10 +112,44 @@ public class VaultService {
         );
     }
 
+    private void ensureOwner(Vault vault) {
+        UUID currentUserId = userContextService.getCurrentUser().getId();
+        if (!vault.getUser().getId().equals(currentUserId)) {
+            throw new ForbiddenException("You do not have access to this vault");
+        }
+    }
+
     private void applyRequest(Vault vault, VaultRequest request) {
-        vault.setName(request.name().trim());
-        vault.setDescription(request.description());
-        vault.setIcon(request.icon());
-        vault.setColor(request.color());
+        String name = normalizeName(request.name());
+        ensureNameAvailable(vault.getUser().getId(), name, vault.getId());
+
+        vault.setName(name);
+        vault.setDescription(trimToNull(request.description()));
+        vault.setIcon(trimToNull(request.icon()));
+        vault.setColor(trimToNull(request.color()));
+    }
+
+    private void ensureNameAvailable(UUID userId, String name, UUID excludedVaultId) {
+        boolean exists = excludedVaultId == null
+            ? vaultRepository.existsByUser_IdAndNameIgnoreCase(userId, name)
+            : vaultRepository.existsByUser_IdAndNameIgnoreCaseAndIdNot(userId, name, excludedVaultId);
+
+        if (exists) {
+            throw new BadRequestException("Vault name already exists");
+        }
+    }
+
+    private String normalizeName(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException("Vault name is required");
+        }
+        return value.trim();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

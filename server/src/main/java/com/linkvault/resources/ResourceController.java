@@ -60,9 +60,20 @@ public class ResourceController {
         return ApiResponse.success("Resource loaded", resourceService.getResourceResponse(id));
     }
 
-    @PostMapping("/api/resources")
-    public ApiResponse<ResourceResponse> create(@Valid @RequestBody ResourceRequest request) {
-        return ApiResponse.success("Resource created", resourceService.create(request));
+    @PostMapping("/api/vaults/{vaultId}/resources")
+    public ApiResponse<ResourceResponse> createInVault(
+        @PathVariable UUID vaultId,
+        @Valid @RequestBody ResourceRequest request
+    ) {
+        return ApiResponse.success("Resource created", resourceService.createInVault(vaultId, request));
+    }
+
+    @PostMapping("/api/folders/{folderId}/resources")
+    public ApiResponse<ResourceResponse> createInFolder(
+        @PathVariable UUID folderId,
+        @Valid @RequestBody ResourceRequest request
+    ) {
+        return ApiResponse.success("Resource created", resourceService.createInFolder(folderId, request));
     }
 
     @PutMapping("/api/resources/{id}")
@@ -91,17 +102,29 @@ public class ResourceController {
         return ApiResponse.success("Resource view recorded", resourceService.recordView(id));
     }
 
-    @PostMapping(value = "/api/resources/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<ResourceResponse> upload(
-        @RequestParam UUID vaultId,
-        @RequestParam(required = false) UUID folderId,
-        @RequestParam String title,
+    @PostMapping(value = "/api/vaults/{vaultId}/resources/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ResourceResponse> uploadToVault(
+        @PathVariable UUID vaultId,
+        @RequestParam(required = false) String title,
         @RequestParam(required = false) String description,
-        @RequestParam MultipartFile file
+        @RequestParam("file") MultipartFile file
     ) {
         return ApiResponse.success(
             "File resource uploaded",
-            resourceService.uploadFile(vaultId, folderId, title, description, file)
+            resourceService.uploadFileToVault(vaultId, title, description, file)
+        );
+    }
+
+    @PostMapping(value = "/api/folders/{folderId}/resources/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ResourceResponse> uploadToFolder(
+        @PathVariable UUID folderId,
+        @RequestParam(required = false) String title,
+        @RequestParam(required = false) String description,
+        @RequestParam("file") MultipartFile file
+    ) {
+        return ApiResponse.success(
+            "File resource uploaded",
+            resourceService.uploadFileToFolder(folderId, title, description, file)
         );
     }
 

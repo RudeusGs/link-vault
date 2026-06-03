@@ -23,6 +23,11 @@ server:
   port: 8080
 
 app:
+  seed-demo-data: ${APP_SEED_DEMO_DATA:false}
+  jwt:
+    issuer: ${APP_JWT_ISSUER:link-vault-api}
+    secret: ${APP_JWT_SECRET:dev-only-change-this-secret-before-production-please-32-chars}
+    expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:120}
   cors:
     allowed-origins:
       - http://localhost:4200

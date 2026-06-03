@@ -36,9 +36,20 @@ public class FolderController {
         return ApiResponse.success("Child folders loaded", folderService.listChildren(id));
     }
 
-    @PostMapping("/api/folders")
-    public ApiResponse<FolderResponse> create(@Valid @RequestBody FolderRequest request) {
-        return ApiResponse.success("Folder created", folderService.create(request));
+    @PostMapping("/api/vaults/{vaultId}/folders")
+    public ApiResponse<FolderResponse> createInVault(
+        @PathVariable UUID vaultId,
+        @Valid @RequestBody FolderRequest request
+    ) {
+        return ApiResponse.success("Folder created", folderService.createInVault(vaultId, request));
+    }
+
+    @PostMapping("/api/folders/{parentId}/children")
+    public ApiResponse<FolderResponse> createChild(
+        @PathVariable UUID parentId,
+        @Valid @RequestBody FolderRequest request
+    ) {
+        return ApiResponse.success("Folder created", folderService.createChild(parentId, request));
     }
 
     @PutMapping("/api/folders/{id}")

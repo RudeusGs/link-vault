@@ -14,6 +14,7 @@ import { ResourceService } from '../../core/services/resource.service';
       <div>
         <p class="eyebrow">Create resource</p>
         <h2>New {{ form.resourceType.toLowerCase() }}</h2>
+        <p class="muted">Resource will be saved into the current {{ folderId ? 'folder' : 'vault' }}.</p>
       </div>
 
       <div *ngIf="error" class="error">{{ error }}</div>
@@ -21,14 +22,14 @@ import { ResourceService } from '../../core/services/resource.service';
       <form class="form-grid" (ngSubmit)="save()">
         <label>
           Type
-          <select name="resourceType" [(ngModel)]="form.resourceType">
+          <select name="resourceType" [(ngModel)]="form.resourceType" (change)="selectedFile = undefined">
             <option *ngFor="let type of resourceTypes" [value]="type">{{ type }}</option>
           </select>
         </label>
 
         <label>
           Title
-          <input name="title" required [(ngModel)]="form.title" />
+          <input name="title" [required]="form.resourceType !== 'FILE'" [(ngModel)]="form.title" />
         </label>
 
         <label class="full">
@@ -38,7 +39,7 @@ import { ResourceService } from '../../core/services/resource.service';
 
         <label *ngIf="form.resourceType === 'LINK'" class="full">
           URL
-          <input name="url" type="url" [(ngModel)]="form.url" />
+          <input name="url" type="url" required [(ngModel)]="form.url" />
         </label>
 
         <label *ngIf="form.resourceType === 'LINK'">
@@ -57,8 +58,8 @@ import { ResourceService } from '../../core/services/resource.service';
         </label>
 
         <label *ngIf="form.resourceType === 'FILE'" class="full">
-          File
-          <input name="file" type="file" (change)="selectFile($event)" />
+          File from computer
+          <input name="file" type="file" required (change)="selectFile($event)" />
         </label>
 
         <div class="row full">
@@ -91,6 +92,12 @@ export class ResourceFormComponent {
 
   protected save(): void {
     this.error = '';
+
+    if (!this.vaultId) {
+      this.error = 'Vault context is missing';
+      return;
+    }
+
     this.saving = true;
 
     if (this.form.resourceType === 'FILE') {
@@ -99,12 +106,21 @@ export class ResourceFormComponent {
     }
 
     const request: ResourceRequest = {
-      ...this.form,
-      vaultId: this.vaultId,
-      folderId: this.folderId ?? null
+      title: this.form.title.trim(),
+      description: this.form.description?.trim() || undefined,
+      resourceType: this.form.resourceType,
+      url: this.form.url?.trim() || undefined,
+      content: this.form.content,
+      codeLanguage: this.form.codeLanguage?.trim() || undefined,
+      sourceName: this.form.sourceName?.trim() || undefined,
+      thumbnailUrl: this.form.thumbnailUrl?.trim() || undefined
     };
 
-    this.resourceService.create(request).subscribe({
+    const save$ = this.folderId
+      ? this.resourceService.createInFolder(this.folderId, request)
+      : this.resourceService.createInVault(this.vaultId, request);
+
+    save$.subscribe({
       next: () => this.afterSaved(),
       error: (error) => this.afterError(error)
     });
@@ -123,15 +139,15 @@ export class ResourceFormComponent {
     }
 
     const data = new FormData();
-    data.append('vaultId', this.vaultId);
-    if (this.folderId) {
-      data.append('folderId', this.folderId);
-    }
-    data.append('title', this.form.title);
-    data.append('description', this.form.description ?? '');
+    data.append('title', this.form.title.trim());
+    data.append('description', this.form.description?.trim() ?? '');
     data.append('file', this.selectedFile);
 
-    this.resourceService.uploadFile(data).subscribe({
+    const upload$ = this.folderId
+      ? this.resourceService.uploadToFolder(this.folderId, data)
+      : this.resourceService.uploadToVault(this.vaultId, data);
+
+    upload$.subscribe({
       next: () => this.afterSaved(),
       error: (error) => this.afterError(error)
     });
@@ -150,15 +166,14 @@ export class ResourceFormComponent {
 
   private emptyForm(): ResourceRequest {
     return {
-      vaultId: '',
-      folderId: null,
       title: '',
       description: '',
       resourceType: 'LINK',
       url: '',
       content: '',
       codeLanguage: '',
-      sourceName: ''
+      sourceName: '',
+      thumbnailUrl: ''
     };
   }
 }

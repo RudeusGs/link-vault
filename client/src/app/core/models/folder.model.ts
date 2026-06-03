@@ -11,8 +11,6 @@ export interface Folder {
 }
 
 export interface FolderRequest {
-  vaultId: string;
-  parentId?: string | null;
   name: string;
   description?: string;
   icon?: string;
