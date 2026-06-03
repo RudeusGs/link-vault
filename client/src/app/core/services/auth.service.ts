@@ -2,105 +2,122 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 
 import {
-  AuthAvailability,
   AuthResponse,
   AuthUser,
+  AvailabilityResponse,
   LoginRequest,
   RegisterRequest
 } from '../models/auth.model';
 import { ApiService } from './api.service';
 
+const TOKEN_KEY = 'linkvault.access_token';
+const USER_KEY = 'linkvault.user';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly accessTokenKey = 'linkvault.accessToken';
-  private readonly userKey = 'linkvault.user';
   private readonly api = inject(ApiService);
+  private readonly tokenState = signal<string | null>(this.readToken());
+  private readonly userState = signal<AuthUser | null>(this.readUser());
 
-  private readonly accessToken = signal<string | null>(this.readStoredToken());
-  readonly currentUser = signal<AuthUser | null>(this.readStoredUser());
-  readonly isAuthenticated = computed(() => Boolean(this.accessToken()));
+  readonly currentUser = this.userState.asReadonly();
+  readonly token = this.tokenState.asReadonly();
+  readonly isLoggedIn = computed(() => Boolean(this.tokenState()));
+
+  isAuthenticated(): boolean {
+    return Boolean(this.tokenState());
+  }
 
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.api.post<AuthResponse>('/auth/login', request).pipe(
-      tap((response) => this.storeSession(response))
+      tap((response) => this.applySession(response))
     );
   }
 
   register(request: RegisterRequest): Observable<AuthResponse> {
     return this.api.post<AuthResponse>('/auth/register', request).pipe(
-      tap((response) => this.storeSession(response))
+      tap((response) => this.applySession(response))
     );
   }
 
   loadMe(): Observable<AuthUser> {
-    return this.api.get<AuthUser>('/auth/me').pipe(tap((user) => this.storeUser(user)));
+    return this.api.get<AuthUser>('/auth/me').pipe(tap((user) => this.setUser(user)));
   }
 
-  checkAvailability(email?: string, username?: string): Observable<AuthAvailability> {
-    return this.api.get<AuthAvailability>('/auth/availability', { email, username });
-  }
-
-  getAccessToken(): string | null {
-    return this.accessToken();
-  }
-
-  hasToken(): boolean {
-    return Boolean(this.accessToken());
+  checkAvailability(username: string, email: string): Observable<AvailabilityResponse> {
+    return this.api.get<AvailabilityResponse>('/auth/availability', { username, email });
   }
 
   logout(): void {
-    this.clearSession();
+    this.tokenState.set(null);
+    this.userState.set(null);
+    this.safeStorageRemove(TOKEN_KEY);
+    this.safeStorageRemove(USER_KEY);
   }
 
-  clearSession(): void {
-    try {
-      localStorage.removeItem(this.accessTokenKey);
-      localStorage.removeItem(this.userKey);
-    } catch {
-      // localStorage can fail in restricted browser modes. Keep app state consistent anyway.
+  private applySession(response: AuthResponse): void {
+    const rawToken = response.accessToken ?? response.token ?? '';
+    const token = rawToken.startsWith('Bearer ') ? rawToken.slice(7) : rawToken;
+
+    if (!token) {
+      throw new Error('Backend không trả access token');
     }
 
-    this.accessToken.set(null);
-    this.currentUser.set(null);
-  }
+    this.tokenState.set(token);
+    this.safeStorageSet(TOKEN_KEY, token);
 
-  private storeSession(response: AuthResponse): void {
-    try {
-      localStorage.setItem(this.accessTokenKey, response.accessToken);
-    } catch {
-      // Ignore storage failures; the current tab still keeps the user signal.
+    if (response.user) {
+      this.setUser(response.user);
+      return;
     }
 
-    this.accessToken.set(response.accessToken);
-    this.storeUser(response.user);
+    this.loadMe().subscribe({ error: () => undefined });
   }
 
-  private storeUser(user: AuthUser): void {
-    try {
-      localStorage.setItem(this.userKey, JSON.stringify(user));
-    } catch {
-      // Ignore storage failures; the current tab still keeps the user signal.
+  private setUser(user: AuthUser): void {
+    this.userState.set(user);
+    this.safeStorageSet(USER_KEY, JSON.stringify(user));
+  }
+
+  private readToken(): string | null {
+    return this.safeStorageGet(TOKEN_KEY);
+  }
+
+  private readUser(): AuthUser | null {
+    const raw = this.safeStorageGet(USER_KEY);
+    if (!raw) {
+      return null;
     }
 
-    this.currentUser.set(user);
-  }
-
-  private readStoredToken(): string | null {
     try {
-      return localStorage.getItem(this.accessTokenKey);
+      return JSON.parse(raw) as AuthUser;
     } catch {
       return null;
     }
   }
 
-  private readStoredUser(): AuthUser | null {
+  private safeStorageGet(key: string): string | null {
     try {
-      const raw = localStorage.getItem(this.userKey);
-      return raw ? (JSON.parse(raw) as AuthUser) : null;
+      return localStorage.getItem(key);
     } catch {
       return null;
+    }
+  }
+
+  private safeStorageSet(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  private safeStorageRemove(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore storage errors
     }
   }
 }

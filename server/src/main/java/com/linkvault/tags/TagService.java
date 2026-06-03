@@ -6,8 +6,10 @@ import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.resources.ResourceTagRepository;
 import com.linkvault.users.User;
 import com.linkvault.users.UserContextService;
+import java.util.HashMap;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,9 +34,7 @@ public class TagService {
     @Transactional(readOnly = true)
     public List<TagResponse> listTags() {
         UUID userId = userContextService.getCurrentUser().getId();
-        return tagRepository.findByUser_IdOrderByNameAsc(userId).stream()
-            .map(this::toResponse)
-            .toList();
+        return toResponses(tagRepository.findByUser_IdOrderByNameAsc(userId));
     }
 
     @Transactional
@@ -73,20 +73,47 @@ public class TagService {
     }
 
     public TagResponse toResponse(Tag tag) {
+        return toResponse(tag, usageByTagId(List.of(tag)));
+    }
+
+    public List<TagResponse> toResponses(List<Tag> tags) {
+        Map<UUID, Long> usageByTagId = usageByTagId(tags);
+        return tags.stream()
+            .map(tag -> toResponse(tag, usageByTagId))
+            .toList();
+    }
+
+    private TagResponse toResponse(Tag tag, Map<UUID, Long> usageByTagId) {
         return new TagResponse(
             tag.getId(),
             tag.getName(),
             tag.getColor(),
-            tag.getId() == null ? 0 : resourceTagRepository.countByTag_Id(tag.getId())
+            usageByTagId.getOrDefault(tag.getId(), 0L)
         );
     }
 
     public List<TagResponse> topTags(List<Tag> tags, int limit) {
-        return tags.stream()
-            .map(this::toResponse)
+        return toResponses(tags).stream()
             .sorted(Comparator.comparingLong(TagResponse::usageCount).reversed())
             .limit(limit)
             .toList();
+    }
+
+    private Map<UUID, Long> usageByTagId(List<Tag> tags) {
+        List<UUID> tagIds = tags.stream()
+            .map(Tag::getId)
+            .filter(java.util.Objects::nonNull)
+            .toList();
+
+        if (tagIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, Long> usage = new HashMap<>();
+        resourceTagRepository.countUsageByTagIds(tagIds).forEach(row ->
+            usage.put((UUID) row[0], (Long) row[1])
+        );
+        return usage;
     }
 
     private void ensureNameAvailable(UUID userId, String requestedName, String currentName) {

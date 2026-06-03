@@ -1,47 +1,68 @@
-<ng-container *ngIf="isAuthPage(); else appShell">
-  <router-outlet />
-</ng-container>
+<ng-container *ngIf="auth.isAuthenticated(); else authOnly">
+  <div class="lv-app-bg">
+    <header class="lv-topbar">
+      <div class="lv-container h-100 d-flex align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-4 min-w-0">
+          <a class="lv-brand" routerLink="/dashboard">LinkVault</a>
 
-<ng-template #appShell>
-  <div class="app-shell">
-    <aside class="sidebar" aria-label="Primary navigation">
-      <a class="brand" routerLink="/dashboard" aria-label="LinkVault dashboard">
-        <span class="brand-mark">LV</span>
-        <span>LinkVault</span>
-      </a>
-
-      <nav class="nav-list">
-        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-        <a routerLink="/vaults" routerLinkActive="active">Vaults</a>
-        <a routerLink="/tags" routerLinkActive="active">Tags</a>
-      </nav>
-
-      <section class="account-card" *ngIf="auth.currentUser() as user">
-        <div class="avatar">{{ initials(user.displayName || user.username) }}</div>
-        <div class="account-info">
-          <strong>{{ user.displayName || user.username }}</strong>
-          <span>@{{ user.username }}</span>
+          <nav class="d-none d-md-flex align-items-center gap-3">
+            <a class="lv-nav-link" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+            <a class="lv-nav-link" routerLink="/vaults" routerLinkActive="active">Vaults</a>
+            <a class="lv-nav-link" routerLink="/tags" routerLinkActive="active">Tags</a>
+          </nav>
         </div>
-      </section>
 
-      <div
-        class="health"
-        [class.checking]="healthState() === 'checking'"
-        [class.online]="healthState() === 'online'"
-        [class.offline]="healthState() === 'offline'"
-      >
-        <span class="health-dot" aria-hidden="true"></span>
-        <div>
-          <strong>{{ healthState() }}</strong>
-          <span>{{ healthMessage() }}</span>
+        <div class="d-flex align-items-center gap-2 gap-md-3">
+          <div class="position-relative d-none d-sm-block">
+            <span class="material-symbols-outlined lv-input-icon">search</span>
+            <input class="lv-search" type="search" placeholder="Search resources..." />
+          </div>
+
+          <button class="lv-icon-button d-none d-md-inline-flex" type="button" title="Notifications">
+            <span class="material-symbols-outlined">notifications</span>
+          </button>
+          <button class="lv-icon-button d-none d-md-inline-flex" type="button" title="Help">
+            <span class="material-symbols-outlined">help</span>
+          </button>
+
+          <button class="btn btn-sm border rounded-pill d-none d-lg-inline-flex align-items-center gap-2" type="button" (click)="checkHealth()">
+            <span class="rounded-circle d-inline-block" style="width:8px;height:8px" [class.bg-success]="healthState() === 'online'" [class.bg-danger]="healthState() === 'offline'" [class.bg-secondary]="healthState() === 'checking'"></span>
+            <span class="text-capitalize">{{ healthState() }}</span>
+          </button>
+
+          <div class="dropdown">
+            <button class="btn p-0 border-0 rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <span class="d-inline-flex align-items-center justify-content-center rounded-circle lv-primary-bg fw-bold" style="width:34px;height:34px">
+                {{ userInitial }}
+              </span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-2 shadow border-0" style="min-width: 260px;">
+              <div class="px-2 py-2 border-bottom mb-2">
+                <strong class="d-block text-truncate">{{ auth.currentUser()?.displayName || auth.currentUser()?.username || 'User' }}</strong>
+                <small class="text-muted text-truncate d-block">{{ auth.currentUser()?.email || 'Signed in' }}</small>
+              </div>
+              <button class="dropdown-item rounded-2 d-lg-none" type="button" (click)="checkHealth()">
+                API: {{ healthMessage() }}
+              </button>
+              <a class="dropdown-item rounded-2 d-md-none" routerLink="/dashboard">Dashboard</a>
+              <a class="dropdown-item rounded-2 d-md-none" routerLink="/vaults">Vaults</a>
+              <a class="dropdown-item rounded-2 d-md-none" routerLink="/tags">Tags</a>
+              <button class="dropdown-item rounded-2 text-danger" type="button" (click)="logout()">
+                <span class="material-symbols-outlined me-2" style="font-size:18px">logout</span>
+                Sign out
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+    </header>
 
-      <button class="logout-btn" type="button" (click)="logout()">Logout</button>
-    </aside>
-
-    <main class="workspace">
+    <main class="lv-container lv-content">
       <router-outlet />
     </main>
   </div>
+</ng-container>
+
+<ng-template #authOnly>
+  <router-outlet />
 </ng-template>

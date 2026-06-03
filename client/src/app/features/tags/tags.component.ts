@@ -10,60 +10,96 @@ import { TagService } from '../../core/services/tag.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="page">
-      <header class="page-header">
+    <section>
+      <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
         <div>
-          <p class="eyebrow">Tags</p>
-          <h1>Tag manager</h1>
+          <h1 class="lv-page-title">Tags</h1>
+          <p class="lv-muted fs-6 mb-0">Organize resources by labels.</p>
         </div>
-      </header>
+        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openCreate()">
+          <span class="material-symbols-outlined" style="font-size:20px">add</span>
+          New Tag
+        </button>
+      </div>
 
-      <div *ngIf="error" class="error">{{ error }}</div>
+      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
-      <section class="panel stack">
-        <h2>{{ editingId ? 'Edit tag' : 'Create tag' }}</h2>
-        <form class="form-grid" (ngSubmit)="save()">
-          <label>
-            Name
-            <input name="name" required [(ngModel)]="form.name" />
-          </label>
-          <label>
-            Color
-            <input name="color" placeholder="#edf5f2" [(ngModel)]="form.color" />
-          </label>
-          <div class="row full">
-            <button class="btn primary" type="submit">{{ editingId ? 'Update' : 'Create' }}</button>
-            <button class="btn" type="button" (click)="reset()">Cancel</button>
+      <div *ngIf="loading" class="lv-card p-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading tags...</div>
+
+      <ng-container *ngIf="!loading && tags.length > 0; else emptyTpl">
+        <div class="row g-4">
+          <div class="col-sm-6 col-lg-4 col-xl-3" *ngFor="let tag of tags">
+            <article class="lv-card lv-card-hover p-4 h-100">
+              <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div class="d-flex align-items-center gap-3 min-w-0">
+                  <span class="rounded-circle d-inline-block" style="width:12px;height:12px" [style.background]="tag.color || '#003d9b'"></span>
+                  <h2 class="lv-section-title fs-5 text-truncate mb-0">{{ tag.name }}</h2>
+                </div>
+                <div class="dropdown">
+                  <button class="lv-icon-button" type="button" data-bs-toggle="dropdown">
+                    <span class="material-symbols-outlined">more_vert</span>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end border-0 shadow p-2">
+                    <li><button class="dropdown-item rounded-2" type="button" (click)="openEdit(tag)">Edit</button></li>
+                    <li><button class="dropdown-item rounded-2 text-danger" type="button" (click)="delete(tag)">Delete</button></li>
+                  </ul>
+                </div>
+              </div>
+              <p class="lv-muted mb-0">{{ tag.usageCount }} resources tagged</p>
+            </article>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #emptyTpl>
+        <div *ngIf="!loading" class="lv-empty-state">
+          <span class="material-symbols-outlined d-block mb-3" style="font-size:42px">sell</span>
+          <h2 class="lv-section-title">No tags yet</h2>
+          <p>Create labels to organize resources faster.</p>
+          <button class="btn btn-primary" type="button" (click)="openCreate()">Create tag</button>
+        </div>
+      </ng-template>
+    </section>
+
+    <div class="lv-modal-backdrop" *ngIf="modalOpen" (click)="closeModal()">
+      <section class="lv-modal-card p-4" (click)="$event.stopPropagation()">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h2 class="lv-section-title mb-1">{{ editing ? 'Edit Tag' : 'Create Tag' }}</h2>
+            <p class="lv-muted mb-0">Use color to visually group resources.</p>
+          </div>
+          <button class="lv-icon-button" type="button" (click)="closeModal()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+
+        <form class="row g-3" (ngSubmit)="save()">
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Name</label>
+            <input class="form-control" name="tagName" required [(ngModel)]="form.name" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Color</label>
+            <input class="form-control form-control-color w-100" name="tagColor" type="color" [(ngModel)]="form.color" />
+          </div>
+          <div class="col-12 d-flex justify-content-end gap-2">
+            <button class="btn btn-outline-secondary" type="button" (click)="closeModal()">Cancel</button>
+            <button class="btn btn-primary" type="submit" [disabled]="saving">
+              <span *ngIf="saving" class="spinner-border spinner-border-sm me-2"></span>
+              Save tag
+            </button>
           </div>
         </form>
       </section>
-
-      <section class="grid cols-3">
-        <article class="card tag-card" *ngFor="let tag of tags">
-          <span class="pill" [style.background]="tag.color || null">{{ tag.name }}</span>
-          <p class="muted">{{ tag.usageCount }} resources</p>
-          <div class="row wrap">
-            <button class="btn" type="button" (click)="edit(tag)">Edit</button>
-            <button class="btn danger" type="button" (click)="remove(tag)">Delete</button>
-          </div>
-        </article>
-      </section>
-    </section>
-  `,
-  styles: [
-    `
-      .tag-card {
-        display: grid;
-        gap: 12px;
-      }
-    `
-  ]
+    </div>
+  `
 })
 export class TagsComponent implements OnInit {
   protected tags: Tag[] = [];
-  protected form: TagRequest = this.emptyForm();
-  protected editingId?: string;
+  protected loading = false;
+  protected saving = false;
   protected error = '';
+  protected modalOpen = false;
+  protected editing?: Tag;
+  protected form: TagRequest = this.emptyForm();
 
   private readonly tagService = inject(TagService);
 
@@ -72,49 +108,60 @@ export class TagsComponent implements OnInit {
   }
 
   protected load(): void {
+    this.loading = true;
+    this.error = '';
     this.tagService.list().subscribe({
-      next: (tags) => (this.tags = tags),
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not load tags')
+      next: (tags) => {
+        this.loading = false;
+        this.tags = tags;
+      },
+      error: (error) => {
+        this.loading = false;
+        this.error = error instanceof Error ? error.message : 'Could not load tags';
+      }
     });
+  }
+
+  protected openCreate(): void {
+    this.editing = undefined;
+    this.form = this.emptyForm();
+    this.modalOpen = true;
+  }
+
+  protected openEdit(tag: Tag): void {
+    this.editing = tag;
+    this.form = { name: tag.name, color: tag.color ?? '#003d9b' };
+    this.modalOpen = true;
+  }
+
+  protected closeModal(): void {
+    this.modalOpen = false;
+    this.editing = undefined;
+    this.form = this.emptyForm();
   }
 
   protected save(): void {
-    const action = this.editingId
-      ? this.tagService.update(this.editingId, this.form)
-      : this.tagService.create(this.form);
-
+    this.saving = true;
+    const action = this.editing ? this.tagService.update(this.editing.id, this.form) : this.tagService.create(this.form);
     action.subscribe({
       next: () => {
-        this.reset();
+        this.saving = false;
+        this.closeModal();
         this.load();
       },
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not save tag')
+      error: (error) => {
+        this.saving = false;
+        this.error = error instanceof Error ? error.message : 'Could not save tag';
+      }
     });
   }
 
-  protected edit(tag: Tag): void {
-    this.editingId = tag.id;
-    this.form = { name: tag.name, color: tag.color };
-  }
-
-  protected remove(tag: Tag): void {
-    if (!confirm(`Delete tag "${tag.name}"?`)) {
-      return;
-    }
-
-    this.tagService.delete(tag.id).subscribe({
-      next: () => this.load(),
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not delete tag')
-    });
-  }
-
-  protected reset(): void {
-    this.editingId = undefined;
-    this.form = this.emptyForm();
-    this.error = '';
+  protected delete(tag: Tag): void {
+    if (!confirm(`Delete tag "${tag.name}"?`)) return;
+    this.tagService.delete(tag.id).subscribe({ next: () => this.load(), error: (error) => (this.error = error instanceof Error ? error.message : 'Could not delete tag') });
   }
 
   private emptyForm(): TagRequest {
-    return { name: '', color: '#edf5f2' };
+    return { name: '', color: '#003d9b' };
   }
 }

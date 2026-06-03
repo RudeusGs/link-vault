@@ -10,66 +10,80 @@ import { ResourceService } from '../../core/services/resource.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="panel stack">
-      <div>
-        <p class="eyebrow">Create resource</p>
-        <h2>New {{ form.resourceType.toLowerCase() }}</h2>
-        <p class="muted">Resource will be saved into the current {{ folderId ? 'folder' : 'vault' }}.</p>
-      </div>
-
-      <div *ngIf="error" class="error">{{ error }}</div>
-
-      <form class="form-grid" (ngSubmit)="save()">
-        <label>
-          Type
-          <select name="resourceType" [(ngModel)]="form.resourceType" (change)="selectedFile = undefined">
-            <option *ngFor="let type of resourceTypes" [value]="type">{{ type }}</option>
-          </select>
-        </label>
-
-        <label>
-          Title
-          <input name="title" [required]="form.resourceType !== 'FILE'" [(ngModel)]="form.title" />
-        </label>
-
-        <label class="full">
-          Description
-          <textarea name="description" [(ngModel)]="form.description"></textarea>
-        </label>
-
-        <label *ngIf="form.resourceType === 'LINK'" class="full">
-          URL
-          <input name="url" type="url" required [(ngModel)]="form.url" />
-        </label>
-
-        <label *ngIf="form.resourceType === 'LINK'">
-          Source
-          <input name="sourceName" [(ngModel)]="form.sourceName" />
-        </label>
-
-        <label *ngIf="form.resourceType === 'SNIPPET'">
-          Code language
-          <input name="codeLanguage" placeholder="java, ts, js..." [(ngModel)]="form.codeLanguage" />
-        </label>
-
-        <label *ngIf="form.resourceType === 'NOTE' || form.resourceType === 'SNIPPET'" class="full">
-          Content
-          <textarea name="content" [(ngModel)]="form.content"></textarea>
-        </label>
-
-        <label *ngIf="form.resourceType === 'FILE'" class="full">
-          File from computer
-          <input name="file" type="file" required (change)="selectFile($event)" />
-        </label>
-
-        <div class="row full">
-          <button class="btn primary" type="submit" [disabled]="saving">
-            {{ saving ? 'Saving...' : 'Create resource' }}
+    <div class="lv-modal-backdrop" *ngIf="visible" (click)="close()">
+      <section class="lv-modal-card p-4" (click)="$event.stopPropagation()">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h2 class="lv-section-title mb-1">{{ titleFor(form.resourceType) }}</h2>
+            <p class="lv-muted mb-0">Create inside {{ folderId ? 'selected folder' : 'vault root' }}. No manual IDs.</p>
+          </div>
+          <button class="lv-icon-button" type="button" (click)="close()">
+            <span class="material-symbols-outlined">close</span>
           </button>
-          <button class="btn" type="button" (click)="reset()">Reset</button>
         </div>
-      </form>
-    </section>
+
+        <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6 col-md-3" *ngFor="let type of resourceTypes">
+            <button class="btn w-100 border d-flex flex-column align-items-center gap-2 py-3" [class.btn-primary]="form.resourceType === type" [class.text-white]="form.resourceType === type" type="button" (click)="selectType(type)">
+              <span class="material-symbols-outlined">{{ iconFor(type) }}</span>
+              <span class="fw-semibold small">{{ type }}</span>
+            </button>
+          </div>
+        </div>
+
+        <form class="row g-3" (ngSubmit)="save()">
+          <div class="col-md-7">
+            <label class="form-label fw-semibold">Title</label>
+            <input class="form-control" name="title" [required]="form.resourceType !== 'FILE'" [(ngModel)]="form.title" />
+          </div>
+
+          <div class="col-md-5" *ngIf="form.resourceType === 'LINK'">
+            <label class="form-label fw-semibold">Source</label>
+            <input class="form-control" name="sourceName" placeholder="Figma, GitHub..." [(ngModel)]="form.sourceName" />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea class="form-control" name="description" rows="2" [(ngModel)]="form.description"></textarea>
+          </div>
+
+          <div *ngIf="form.resourceType === 'LINK'" class="col-12">
+            <label class="form-label fw-semibold">URL</label>
+            <input class="form-control" name="url" type="url" placeholder="https://..." required [(ngModel)]="form.url" />
+          </div>
+
+          <div *ngIf="form.resourceType === 'SNIPPET'" class="col-md-5">
+            <label class="form-label fw-semibold">Code language</label>
+            <input class="form-control" name="codeLanguage" placeholder="java, ts, js..." [(ngModel)]="form.codeLanguage" />
+          </div>
+
+          <div *ngIf="form.resourceType === 'NOTE' || form.resourceType === 'SNIPPET'" class="col-12">
+            <label class="form-label fw-semibold">Content</label>
+            <textarea class="form-control" name="content" rows="8" [(ngModel)]="form.content"></textarea>
+          </div>
+
+          <div *ngIf="form.resourceType === 'FILE'" class="col-12">
+            <label class="form-label fw-semibold">Upload file from computer</label>
+            <label class="lv-empty-state d-block cursor-pointer" style="cursor:pointer">
+              <span class="material-symbols-outlined d-block mb-2" style="font-size:34px">upload_file</span>
+              <strong>{{ selectedFile?.name || 'Click to choose a file' }}</strong>
+              <p class="lv-muted mb-0 small" *ngIf="selectedFile">{{ selectedFile.size | number }} bytes</p>
+              <input class="d-none" name="file" type="file" (change)="selectFile($event)" />
+            </label>
+          </div>
+
+          <div class="col-12 d-flex gap-2 justify-content-end">
+            <button class="btn btn-outline-secondary" type="button" (click)="close()">Cancel</button>
+            <button class="btn btn-primary" type="submit" [disabled]="saving">
+              <span *ngIf="saving" class="spinner-border spinner-border-sm me-2"></span>
+              Save resource
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   `
 })
 export class ResourceFormComponent {
@@ -78,6 +92,7 @@ export class ResourceFormComponent {
   @Output() saved = new EventEmitter<void>();
 
   protected readonly resourceTypes: ResourceType[] = ['LINK', 'NOTE', 'SNIPPET', 'FILE'];
+  protected visible = false;
   protected saving = false;
   protected error = '';
   protected selectedFile?: File;
@@ -85,19 +100,34 @@ export class ResourceFormComponent {
 
   private readonly resourceService = inject(ResourceService);
 
+  open(type: ResourceType = 'LINK'): void {
+    this.form = this.emptyForm(type);
+    this.selectedFile = undefined;
+    this.error = '';
+    this.visible = true;
+  }
+
+  close(): void {
+    this.visible = false;
+    this.saving = false;
+    this.error = '';
+  }
+
+  protected selectType(type: ResourceType): void {
+    this.form = { ...this.emptyForm(type), title: this.form.title, description: this.form.description };
+    this.selectedFile = undefined;
+  }
+
   protected selectFile(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.selectedFile = input.files?.[0];
+    if (this.selectedFile && !this.form.title) {
+      this.form.title = this.selectedFile.name;
+    }
   }
 
   protected save(): void {
     this.error = '';
-
-    if (!this.vaultId) {
-      this.error = 'Vault context is missing';
-      return;
-    }
-
     this.saving = true;
 
     if (this.form.resourceType === 'FILE') {
@@ -106,30 +136,37 @@ export class ResourceFormComponent {
     }
 
     const request: ResourceRequest = {
-      title: this.form.title.trim(),
-      description: this.form.description?.trim() || undefined,
-      resourceType: this.form.resourceType,
-      url: this.form.url?.trim() || undefined,
-      content: this.form.content,
-      codeLanguage: this.form.codeLanguage?.trim() || undefined,
-      sourceName: this.form.sourceName?.trim() || undefined,
-      thumbnailUrl: this.form.thumbnailUrl?.trim() || undefined
+      ...this.form,
+      url: this.form.url?.trim(),
+      content: this.form.content?.trim()
     };
 
-    const save$ = this.folderId
+    const action = this.folderId
       ? this.resourceService.createInFolder(this.folderId, request)
       : this.resourceService.createInVault(this.vaultId, request);
 
-    save$.subscribe({
+    action.subscribe({
       next: () => this.afterSaved(),
       error: (error) => this.afterError(error)
     });
   }
 
-  protected reset(): void {
-    this.form = this.emptyForm();
-    this.selectedFile = undefined;
-    this.error = '';
+  protected titleFor(type: ResourceType): string {
+    switch (type) {
+      case 'LINK': return 'New Link';
+      case 'NOTE': return 'New Note';
+      case 'SNIPPET': return 'New Snippet';
+      case 'FILE': return 'Upload File';
+    }
+  }
+
+  protected iconFor(type: ResourceType): string {
+    switch (type) {
+      case 'LINK': return 'link';
+      case 'NOTE': return 'notes';
+      case 'SNIPPET': return 'code';
+      case 'FILE': return 'upload_file';
+    }
   }
 
   private uploadFile(): void {
@@ -139,15 +176,15 @@ export class ResourceFormComponent {
     }
 
     const data = new FormData();
-    data.append('title', this.form.title.trim());
-    data.append('description', this.form.description?.trim() ?? '');
+    data.append('title', this.form.title || this.selectedFile.name);
+    data.append('description', this.form.description ?? '');
     data.append('file', this.selectedFile);
 
-    const upload$ = this.folderId
+    const action = this.folderId
       ? this.resourceService.uploadToFolder(this.folderId, data)
       : this.resourceService.uploadToVault(this.vaultId, data);
 
-    upload$.subscribe({
+    action.subscribe({
       next: () => this.afterSaved(),
       error: (error) => this.afterError(error)
     });
@@ -155,7 +192,9 @@ export class ResourceFormComponent {
 
   private afterSaved(): void {
     this.saving = false;
-    this.reset();
+    this.visible = false;
+    this.form = this.emptyForm();
+    this.selectedFile = undefined;
     this.saved.emit();
   }
 
@@ -164,11 +203,11 @@ export class ResourceFormComponent {
     this.error = error instanceof Error ? error.message : 'Could not save resource';
   }
 
-  private emptyForm(): ResourceRequest {
+  private emptyForm(type: ResourceType = 'LINK'): ResourceRequest {
     return {
       title: '',
       description: '',
-      resourceType: 'LINK',
+      resourceType: type,
       url: '',
       content: '',
       codeLanguage: '',

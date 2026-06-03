@@ -4,9 +4,7 @@ export interface AuthUser {
   email: string;
   displayName?: string | null;
   avatarUrl?: string | null;
-  isVerified?: boolean | null;
   createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface LoginRequest {
@@ -15,21 +13,23 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  email: string;
   username: string;
+  email: string;
   password: string;
   displayName?: string;
-  avatarUrl?: string;
 }
 
 export interface AuthResponse {
-  accessToken: string;
-  tokenType: string;
-  expiresInSeconds: number;
-  user: AuthUser;
+  accessToken?: string;
+  token?: string;
+  tokenType?: string;
+  expiresAt?: string;
+  user?: AuthUser;
 }
 
-export interface AuthAvailability {
-  emailAvailable: boolean;
-  usernameAvailable: boolean;
+export interface AvailabilityResponse {
+  usernameAvailable?: boolean;
+  emailAvailable?: boolean;
+  usernameExists?: boolean;
+  emailExists?: boolean;
 }

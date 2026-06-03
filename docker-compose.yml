@@ -12,6 +12,11 @@ services:
     volumes:
       - linkvault_pgdata:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-linkvault} -d ${POSTGRES_DB:-link_vault_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
     networks:
       - linkvault-network
 
@@ -25,7 +30,8 @@ services:
     ports:
       - "5050:80"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - linkvault-network
 
@@ -35,13 +41,15 @@ services:
     container_name: linkvault-server
     restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/link_vault_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-link_vault_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-linkvault}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-linkvault123}
-      APP_SEED_DEMO_DATA: ${APP_SEED_DEMO_DATA:-false}
+
       APP_JWT_ISSUER: ${APP_JWT_ISSUER:-link-vault-api}
-      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-only-change-this-secret-before-production-please-32-chars}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-change-this-secret-to-a-long-random-string}
       APP_JWT_EXPIRATION_MINUTES: ${APP_JWT_EXPIRATION_MINUTES:-120}
+      APP_SEED_DEMO_DATA: ${APP_SEED_DEMO_DATA:-false}
+
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
@@ -52,7 +60,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - linkvault-network
 

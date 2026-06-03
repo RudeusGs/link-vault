@@ -54,9 +54,7 @@ public class DashboardService {
             resourceRepository.countByVault_User_IdAndResourceType(user.getId(), ResourceType.NOTE),
             resourceRepository.countByVault_User_IdAndResourceType(user.getId(), ResourceType.SNIPPET),
             resourceRepository.countByVault_User_IdAndIsFavoriteTrue(user.getId()),
-            resourceRepository.findTop6ByVault_User_IdOrderByCreatedAtDesc(user.getId()).stream()
-                .map(resourceService::toResponse)
-                .toList(),
+            resourceService.toResponses(resourceRepository.findTop6ByVault_User_IdOrderByCreatedAtDesc(user.getId())),
             tagService.topTags(tagRepository.findByUser_IdOrderByNameAsc(user.getId()), 8)
         );
     }

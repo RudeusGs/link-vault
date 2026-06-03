@@ -15,8 +15,12 @@ import com.linkvault.users.UserContextService;
 import com.linkvault.vaults.Vault;
 import com.linkvault.vaults.VaultService;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,23 +60,19 @@ public class ResourceService {
 
     @Transactional(readOnly = true)
     public List<ResourceResponse> listAll() {
-        return search(null, null, null, null, null, null);
+        return search(null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public List<ResourceResponse> listByVault(UUID vaultId) {
         vaultService.getVault(vaultId);
-        return resourceRepository.findByVault_IdOrderByCreatedAtDesc(vaultId).stream()
-            .map(this::toResponse)
-            .toList();
+        return toResponses(resourceRepository.findByVault_IdOrderByCreatedAtDesc(vaultId));
     }
 
     @Transactional(readOnly = true)
     public List<ResourceResponse> listByFolder(UUID folderId) {
         Folder folder = folderService.getFolder(folderId);
-        return resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId()).stream()
-            .map(this::toResponse)
-            .toList();
+        return toResponses(resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +82,7 @@ public class ResourceService {
         UUID tagId,
         UUID vaultId,
         UUID folderId,
+        Boolean rootOnly,
         Boolean favorite
     ) {
         User user = userContextService.getCurrentUser();
@@ -94,9 +95,16 @@ public class ResourceService {
             throw new BadRequestException("Folder must belong to the selected vault");
         }
 
-        return resourceRepository.search(user.getId(), cleanKeyword(keyword), type, tagId, vaultId, folderId, favorite).stream()
-            .map(this::toResponse)
-            .toList();
+        return toResponses(resourceRepository.search(
+            user.getId(),
+            cleanKeyword(keyword),
+            type,
+            tagId,
+            vaultId,
+            folderId,
+            rootOnly,
+            favorite
+        ));
     }
 
     @Transactional(readOnly = true)
@@ -248,13 +256,17 @@ public class ResourceService {
     }
 
     public ResourceResponse toResponse(Resource resource) {
-        List<TagResponse> tags = resource.getId() == null
-            ? List.of()
-            : resourceTagRepository.findByResource_Id(resource.getId()).stream()
-                .map(ResourceTag::getTag)
-                .map(tagService::toResponse)
-                .toList();
+        return toResponse(resource, tagsByResourceId(List.of(resource)));
+    }
 
+    public List<ResourceResponse> toResponses(List<Resource> resources) {
+        Map<UUID, List<TagResponse>> tagsByResourceId = tagsByResourceId(resources);
+        return resources.stream()
+            .map(resource -> toResponse(resource, tagsByResourceId))
+            .toList();
+    }
+
+    private ResourceResponse toResponse(Resource resource, Map<UUID, List<TagResponse>> tagsByResourceId) {
         return new ResourceResponse(
             resource.getId(),
             resource.getVault().getId(),
@@ -277,10 +289,41 @@ public class ResourceService {
             resource.getThumbnailUrl(),
             resource.getIsFavorite(),
             resource.getIsArchived(),
-            tags,
+            tagsByResourceId.getOrDefault(resource.getId(), List.of()),
             resource.getCreatedAt(),
             resource.getUpdatedAt()
         );
+    }
+
+    private Map<UUID, List<TagResponse>> tagsByResourceId(List<Resource> resources) {
+        List<UUID> resourceIds = resources.stream()
+            .map(Resource::getId)
+            .filter(java.util.Objects::nonNull)
+            .toList();
+
+        if (resourceIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<ResourceTag> resourceTags = resourceTagRepository.findByResource_IdIn(resourceIds);
+        Map<UUID, Tag> uniqueTags = new LinkedHashMap<>();
+        resourceTags.forEach(resourceTag -> uniqueTags.put(resourceTag.getTag().getId(), resourceTag.getTag()));
+
+        Map<UUID, TagResponse> tagResponsesById = new HashMap<>();
+        tagService.toResponses(List.copyOf(uniqueTags.values()))
+            .forEach(tagResponse -> tagResponsesById.put(tagResponse.id(), tagResponse));
+
+        Map<UUID, List<TagResponse>> result = new HashMap<>();
+        resourceTags.forEach(resourceTag -> {
+            UUID resourceId = resourceTag.getResource().getId();
+            TagResponse tag = tagResponsesById.get(resourceTag.getTag().getId());
+            if (tag == null) {
+                return;
+            }
+            result.computeIfAbsent(resourceId, ignored -> new ArrayList<>())
+                .add(tag);
+        });
+        return result;
     }
 
     private ResourceResponse create(ResourceRequest request, Vault vault, Folder folder) {

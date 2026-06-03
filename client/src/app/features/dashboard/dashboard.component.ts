@@ -10,78 +10,108 @@ import { DashboardService } from '../../core/services/dashboard.service';
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <section class="page">
-      <header class="page-header">
+    <section>
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-          <p class="eyebrow">Personal Resource Hub</p>
-          <h1>Dashboard</h1>
+          <h1 class="lv-page-title">Dashboard</h1>
+          <p class="lv-muted fs-6 mb-0">Welcome back, manage your personal resource hub.</p>
         </div>
-        <a class="btn primary" routerLink="/vaults">Open vaults</a>
-      </header>
+        <a class="btn btn-primary d-inline-flex align-items-center gap-2" routerLink="/vaults">
+          <span class="material-symbols-outlined" style="font-size:20px">add</span>
+          New Vault
+        </a>
+      </div>
 
-      <div *ngIf="error" class="error">{{ error }}</div>
+      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
-      <section class="grid cols-4" *ngIf="summary">
-        <article class="card metric" *ngFor="let item of metrics">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-        </article>
-      </section>
-
-      <section class="grid cols-2" *ngIf="summary">
-        <article class="panel stack">
-          <h2>Recent resources</h2>
-          <p *ngIf="summary.recentResources.length === 0" class="muted">No resources yet.</p>
-          <a
-            *ngFor="let resource of summary.recentResources"
-            class="recent-row"
-            [routerLink]="['/resources', resource.id]"
-          >
-            <span class="pill">{{ resource.resourceType }}</span>
-            <strong>{{ resource.title }}</strong>
-          </a>
-        </article>
-
-        <article class="panel stack">
-          <h2>Top tags</h2>
-          <p *ngIf="summary.topTags.length === 0" class="muted">No tags yet.</p>
-          <div class="row wrap">
-            <span *ngFor="let tag of summary.topTags" class="pill">
-              {{ tag.name }} · {{ tag.usageCount }}
-            </span>
+      <ng-container *ngIf="summary; else loadingTpl">
+        <section class="row g-3 mb-4">
+          <div class="col-6 col-md-4 col-xl-3" *ngFor="let item of metrics">
+            <article class="lv-card lv-card-hover p-4 h-100">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <span class="lv-icon-box" [class.lv-badge-secondary]="item.variant === 'secondary'" [class.lv-badge-tertiary]="item.variant === 'tertiary'">
+                  <span class="material-symbols-outlined">{{ item.icon }}</span>
+                </span>
+                <small class="lv-primary fw-semibold">{{ item.hint }}</small>
+              </div>
+              <p class="lv-muted fw-semibold mb-1">{{ item.label }}</p>
+              <h2 class="lv-page-title fs-2">{{ item.value }}</h2>
+            </article>
           </div>
-        </article>
-      </section>
+        </section>
+
+        <section class="row g-4">
+          <div class="col-xl-8">
+            <article class="lv-card p-4 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h2 class="lv-section-title mb-1">Recent resources</h2>
+                  <p class="lv-muted mb-0">Latest links, notes, files and snippets.</p>
+                </div>
+                <a routerLink="/resources" class="btn btn-sm btn-outline-primary">View all</a>
+              </div>
+
+              <div *ngIf="summary.recentResources.length === 0" class="lv-empty-state">
+                <span class="material-symbols-outlined d-block mb-2" style="font-size:36px">inventory_2</span>
+                No resources yet. Create a vault and start saving your first item.
+              </div>
+
+              <div class="list-group list-group-flush">
+                <a *ngFor="let resource of summary.recentResources" class="list-group-item list-group-item-action px-0 py-3" [routerLink]="['/resources', resource.id]">
+                  <div class="d-flex align-items-center gap-3">
+                    <span class="lv-icon-box">
+                      <span class="material-symbols-outlined">{{ iconFor(resource.resourceType) }}</span>
+                    </span>
+                    <div class="min-w-0 flex-grow-1">
+                      <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <strong class="text-truncate">{{ resource.title }}</strong>
+                        <span class="badge rounded-pill lv-badge-soft">{{ resource.resourceType }}</span>
+                      </div>
+                      <small class="lv-muted text-truncate d-block">
+                        {{ resource.vaultName || 'Vault' }} <span *ngIf="resource.folderName">/ {{ resource.folderName }}</span>
+                      </small>
+                    </div>
+                    <span class="material-symbols-outlined lv-muted">chevron_right</span>
+                  </div>
+                </a>
+              </div>
+            </article>
+          </div>
+
+          <div class="col-xl-4">
+            <article class="lv-card p-4 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h2 class="lv-section-title mb-1">Top tags</h2>
+                  <p class="lv-muted mb-0">Most used labels.</p>
+                </div>
+                <a routerLink="/tags" class="btn btn-sm btn-outline-primary">Manage</a>
+              </div>
+
+              <div *ngIf="summary.topTags.length === 0" class="lv-empty-state py-4">
+                <span class="material-symbols-outlined d-block mb-2">sell</span>
+                No tags yet.
+              </div>
+
+              <div class="d-flex flex-wrap gap-2">
+                <span *ngFor="let tag of summary.topTags" class="badge rounded-pill text-bg-light border px-3 py-2">
+                  <span class="material-symbols-outlined me-1" style="font-size:14px">sell</span>
+                  {{ tag.name }} · {{ tag.usageCount }}
+                </span>
+              </div>
+            </article>
+          </div>
+        </section>
+      </ng-container>
+
+      <ng-template #loadingTpl>
+        <div class="lv-card p-4">
+          <span class="spinner-border spinner-border-sm me-2"></span>
+          Loading dashboard...
+        </div>
+      </ng-template>
     </section>
-  `,
-  styles: [
-    `
-      .metric {
-        display: grid;
-        gap: 10px;
-      }
-
-      .metric span {
-        color: #60736c;
-        font-weight: 700;
-      }
-
-      .metric strong {
-        font-size: 1.9rem;
-      }
-
-      .recent-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        border-radius: 8px;
-        color: inherit;
-        text-decoration: none;
-        background: #f5faf8;
-      }
-    `
-  ]
+  `
 })
 export class DashboardComponent implements OnInit {
   protected summary?: DashboardSummary;
@@ -95,14 +125,14 @@ export class DashboardComponent implements OnInit {
     }
 
     return [
-      { label: 'Resources', value: this.summary.totalResources },
-      { label: 'Links', value: this.summary.totalLinks },
-      { label: 'Files', value: this.summary.totalFiles },
-      { label: 'Notes', value: this.summary.totalNotes },
-      { label: 'Snippets', value: this.summary.totalSnippets },
-      { label: 'Favorites', value: this.summary.totalFavorites },
-      { label: 'Vaults', value: this.summary.totalVaults },
-      { label: 'Folders', value: this.summary.totalFolders }
+      { label: 'Vaults', value: this.summary.totalVaults, icon: 'account_balance_wallet', hint: '+ collections', variant: 'primary' },
+      { label: 'Folders', value: this.summary.totalFolders, icon: 'folder', hint: 'organized', variant: 'secondary' },
+      { label: 'Resources', value: this.summary.totalResources, icon: 'inventory_2', hint: 'total items', variant: 'tertiary' },
+      { label: 'Favorites', value: this.summary.totalFavorites, icon: 'star', hint: 'saved', variant: 'primary' },
+      { label: 'Links', value: this.summary.totalLinks, icon: 'link', hint: 'urls', variant: 'primary' },
+      { label: 'Files', value: this.summary.totalFiles, icon: 'draft', hint: 'uploads', variant: 'secondary' },
+      { label: 'Notes', value: this.summary.totalNotes, icon: 'notes', hint: 'ideas', variant: 'tertiary' },
+      { label: 'Snippets', value: this.summary.totalSnippets, icon: 'code', hint: 'code', variant: 'primary' }
     ];
   }
 
@@ -111,5 +141,20 @@ export class DashboardComponent implements OnInit {
       next: (summary) => (this.summary = summary),
       error: (error) => (this.error = error instanceof Error ? error.message : 'Could not load dashboard')
     });
+  }
+
+  protected iconFor(type: string): string {
+    switch (type) {
+      case 'LINK':
+        return 'link';
+      case 'FILE':
+        return 'draft';
+      case 'NOTE':
+        return 'notes';
+      case 'SNIPPET':
+        return 'code';
+      default:
+        return 'inventory_2';
+    }
   }
 }

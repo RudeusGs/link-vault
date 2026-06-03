@@ -9,19 +9,19 @@ export interface Resource {
   folderId?: string | null;
   folderName?: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   resourceType: ResourceType;
-  url?: string;
-  fileUrl?: string;
-  fileName?: string;
-  fileSize?: number;
-  mimeType?: string;
-  storageProvider?: string;
-  storageKey?: string;
-  content?: string;
-  codeLanguage?: string;
-  sourceName?: string;
-  thumbnailUrl?: string;
+  url?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  storageProvider?: string | null;
+  storageKey?: string | null;
+  content?: string | null;
+  codeLanguage?: string | null;
+  sourceName?: string | null;
+  thumbnailUrl?: string | null;
   isFavorite: boolean;
   isArchived: boolean;
   tags: Tag[];
@@ -46,6 +46,7 @@ export interface ResourceSearchParams {
   tagId?: string;
   vaultId?: string;
   folderId?: string;
+  rootOnly?: boolean;
   favorite?: boolean;
 }
 
@@ -53,9 +54,9 @@ export interface ResourcePreview {
   id: string;
   resourceType: ResourceType;
   title: string;
-  previewUrl?: string;
-  mimeType?: string;
-  fileName?: string;
+  previewUrl?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
   supported: boolean;
-  reason?: string;
+  reason?: string | null;
 }

@@ -47,11 +47,12 @@ public class ResourceController {
         @RequestParam(required = false) UUID tagId,
         @RequestParam(required = false) UUID vaultId,
         @RequestParam(required = false) UUID folderId,
+        @RequestParam(required = false) Boolean rootOnly,
         @RequestParam(required = false) Boolean favorite
     ) {
         return ApiResponse.success(
             "Resources loaded",
-            resourceService.search(keyword, type, tagId, vaultId, folderId, favorite)
+            resourceService.search(keyword, type, tagId, vaultId, folderId, rootOnly, favorite)
         );
     }
 

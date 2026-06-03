@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
+import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
   {
@@ -10,10 +11,12 @@ export const routes: Routes = [
   },
   {
     path: 'login',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/login.component').then((m) => m.LoginComponent)
   },
   {
     path: 'register',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/register.component').then((m) => m.RegisterComponent)
   },
   {
@@ -38,6 +41,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/folders/folder-detail.component').then((m) => m.FolderDetailComponent)
+  },
+  {
+    path: 'resources',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/resources/resources-page.component').then((m) => m.ResourcesPageComponent)
   },
   {
     path: 'resources/:resourceId',

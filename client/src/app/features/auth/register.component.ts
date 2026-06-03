@@ -3,7 +3,6 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { RegisterRequest } from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -11,189 +10,130 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <section class="auth-page">
-      <article class="auth-card">
-        <div class="auth-brand">
-          <span class="brand-mark">LV</span>
-          <div>
-            <p class="eyebrow">Start clean</p>
-            <h1>Create account</h1>
+    <main class="lv-auth-bg d-flex align-items-center justify-content-center p-3">
+      <section class="lv-auth-card p-4 p-md-5">
+        <div class="text-center mb-4">
+          <div class="d-inline-flex align-items-center justify-content-center lv-primary-bg rounded-3 shadow-sm mb-3" style="width:52px;height:52px">
+            <span class="material-symbols-outlined" style="font-size:30px">inventory_2</span>
           </div>
+          <h1 class="lv-section-title lv-primary mb-1">LinkVault</h1>
+          <p class="lv-muted mb-0">Create your professional resource hub</p>
         </div>
 
-        <div *ngIf="error" class="error">{{ error }}</div>
+        <form class="d-grid gap-3" (ngSubmit)="register()">
+          <div *ngIf="error" class="alert alert-danger py-2 mb-0">{{ error }}</div>
 
-        <form class="auth-form" (ngSubmit)="register()">
-          <label>
-            Username
-            <input
-              name="username"
-              autocomplete="username"
-              required
-              minlength="3"
-              [(ngModel)]="form.username"
-              (blur)="checkAvailability()"
-            />
-            <small *ngIf="usernameMessage" [class.bad]="usernameTaken">{{ usernameMessage }}</small>
-          </label>
+          <div>
+            <label class="form-label fw-semibold">Username</label>
+            <div class="position-relative">
+              <span class="material-symbols-outlined lv-input-icon">alternate_email</span>
+              <input class="form-control lv-input-with-icon" name="username" required placeholder="johndoe" [(ngModel)]="form.username" (blur)="checkAvailability()" />
+            </div>
+            <small *ngIf="availabilityMessage" [class.text-success]="availabilityOk" [class.text-danger]="!availabilityOk">{{ availabilityMessage }}</small>
+          </div>
 
-          <label>
-            Email / Gmail
-            <input
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-              [(ngModel)]="form.email"
-              (blur)="checkAvailability()"
-            />
-            <small *ngIf="emailMessage" [class.bad]="emailTaken">{{ emailMessage }}</small>
-          </label>
+          <div>
+            <label class="form-label fw-semibold">Email</label>
+            <div class="position-relative">
+              <span class="material-symbols-outlined lv-input-icon">mail</span>
+              <input class="form-control lv-input-with-icon" name="email" required type="email" placeholder="you@gmail.com" [(ngModel)]="form.email" (blur)="checkAvailability()" />
+            </div>
+          </div>
 
-          <label>
-            Display name
-            <input name="displayName" autocomplete="name" [(ngModel)]="form.displayName" />
-          </label>
+          <div>
+            <label class="form-label fw-semibold">Display name</label>
+            <div class="position-relative">
+              <span class="material-symbols-outlined lv-input-icon">badge</span>
+              <input class="form-control lv-input-with-icon" name="displayName" required placeholder="Nguyễn Văn A" [(ngModel)]="form.displayName" />
+            </div>
+          </div>
 
-          <label>
-            Password
-            <input
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              required
-              minlength="6"
-              [(ngModel)]="form.password"
-            />
-          </label>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Password</label>
+              <input class="form-control" name="password" required type="password" minlength="6" placeholder="••••••••" [(ngModel)]="form.password" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Confirm</label>
+              <input class="form-control" name="confirmPassword" required type="password" placeholder="••••••••" [(ngModel)]="confirmPassword" />
+            </div>
+          </div>
 
-          <button class="btn primary" type="submit" [disabled]="loading || emailTaken || usernameTaken">
-            {{ loading ? 'Creating...' : 'Create account' }}
+          <button class="btn btn-primary py-2 fw-semibold mt-2" type="submit" [disabled]="loading || !passwordsMatch">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+            Create account
           </button>
         </form>
 
-        <p class="auth-footer">
-          Already have an account?
-          <a routerLink="/login">Login</a>
-        </p>
-      </article>
-    </section>
-  `,
-  styles: [
-    `
-      .auth-page {
-        display: grid;
-        min-height: 100dvh;
-        place-items: center;
-        padding: 24px;
-        background: linear-gradient(135deg, #183c36, #f4f7f6);
-      }
-
-      .auth-card {
-        display: grid;
-        width: min(100%, 470px);
-        gap: 18px;
-        padding: 28px;
-        border: 1px solid #d8e4df;
-        border-radius: 14px;
-        background: #ffffff;
-        box-shadow: 0 18px 50px rgba(31, 41, 51, 0.16);
-      }
-
-      .auth-brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .brand-mark {
-        display: inline-grid;
-        width: 44px;
-        height: 44px;
-        place-items: center;
-        border-radius: 10px;
-        color: #183c36;
-        background: #f6c66d;
-        font-weight: 900;
-      }
-
-      .auth-form {
-        display: grid;
-        gap: 14px;
-      }
-
-      small {
-        color: #2f7d6d;
-        font-weight: 700;
-      }
-
-      small.bad {
-        color: #8f2f28;
-      }
-
-      .auth-footer {
-        text-align: center;
-      }
-    `
-  ]
+        <div class="text-center mt-4 pt-3 border-top">
+          <span class="lv-muted">Already have an account?</span>
+          <a class="lv-primary fw-semibold ms-1" routerLink="/login">Sign in</a>
+        </div>
+      </section>
+    </main>
+  `
 })
 export class RegisterComponent {
-  protected form: RegisterRequest = {
-    email: '',
+  protected form = {
     username: '',
+    email: '',
     displayName: '',
     password: ''
   };
+  protected confirmPassword = '';
   protected loading = false;
   protected error = '';
-  protected emailTaken = false;
-  protected usernameTaken = false;
-  protected emailMessage = '';
-  protected usernameMessage = '';
+  protected availabilityMessage = '';
+  protected availabilityOk = false;
 
-  private readonly authService = inject(AuthService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected checkAvailability(): void {
-    const email = this.form.email.trim();
-    const username = this.form.username.trim();
+  get passwordsMatch(): boolean {
+    return Boolean(this.form.password && this.form.password === this.confirmPassword);
+  }
 
-    if (!email && !username) {
+  protected checkAvailability(): void {
+    if (!this.form.username || !this.form.email) {
       return;
     }
 
-    this.authService.checkAvailability(email, username).subscribe({
+    this.auth.checkAvailability(this.form.username.trim(), this.form.email.trim()).subscribe({
       next: (result) => {
-        this.emailTaken = Boolean(email) && !result.emailAvailable;
-        this.usernameTaken = Boolean(username) && !result.usernameAvailable;
-        this.emailMessage = email ? (this.emailTaken ? 'Email is already registered' : 'Email is available') : '';
-        this.usernameMessage = username
-          ? this.usernameTaken
-            ? 'Username is already taken'
-            : 'Username is available'
-          : '';
+        const usernameOk = result.usernameAvailable ?? (result.usernameExists !== undefined ? !result.usernameExists : true);
+        const emailOk = result.emailAvailable ?? (result.emailExists !== undefined ? !result.emailExists : true);
+        this.availabilityOk = usernameOk && emailOk;
+        this.availabilityMessage = this.availabilityOk
+          ? 'Username and email are available'
+          : 'Username or email is already used';
       },
       error: () => {
-        this.emailMessage = '';
-        this.usernameMessage = '';
+        this.availabilityMessage = '';
       }
     });
   }
 
   protected register(): void {
+    if (!this.passwordsMatch) {
+      this.error = 'Password confirmation does not match';
+      return;
+    }
+
     this.error = '';
     this.loading = true;
-
-    this.authService.register({
-      email: this.form.email.trim(),
+    this.auth.register({
       username: this.form.username.trim(),
-      password: this.form.password,
-      displayName: this.form.displayName?.trim() || undefined
+      email: this.form.email.trim(),
+      displayName: this.form.displayName.trim(),
+      password: this.form.password
     }).subscribe({
-      next: () => this.router.navigateByUrl('/dashboard'),
+      next: () => {
+        this.loading = false;
+        this.router.navigate(['/dashboard']);
+      },
       error: (error) => {
         this.loading = false;
-        this.error = error instanceof Error ? error.message : 'Could not register';
+        this.error = error instanceof Error ? error.message : 'Could not create account';
       }
     });
   }

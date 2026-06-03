@@ -15,7 +15,7 @@ export class ApiService {
   getHealth(): Observable<ApiResponse<HealthData>> {
     return this.http
       .get<ApiResponse<HealthData>>(`${this.baseUrl}/health`)
-      .pipe(catchError((error) => this.toClientError(error)));
+      .pipe(catchError((error) => this.handleError(error)));
   }
 
   get<T>(path: string, params?: object): Observable<T> {
@@ -23,43 +23,53 @@ export class ApiService {
       .get<ApiResponse<T>>(`${this.baseUrl}${path}`, { params: this.toParams(params) })
       .pipe(
         map((response) => this.unwrap(response)),
-        catchError((error) => this.toClientError(error))
+        catchError((error) => this.handleError(error))
       );
   }
 
   post<T>(path: string, body: unknown): Observable<T> {
-    return this.http.post<ApiResponse<T>>(`${this.baseUrl}${path}`, body).pipe(
-      map((response) => this.unwrap(response)),
-      catchError((error) => this.toClientError(error))
-    );
+    return this.http
+      .post<ApiResponse<T>>(`${this.baseUrl}${path}`, body)
+      .pipe(
+        map((response) => this.unwrap(response)),
+        catchError((error) => this.handleError(error))
+      );
   }
 
   put<T>(path: string, body: unknown): Observable<T> {
-    return this.http.put<ApiResponse<T>>(`${this.baseUrl}${path}`, body).pipe(
-      map((response) => this.unwrap(response)),
-      catchError((error) => this.toClientError(error))
-    );
+    return this.http
+      .put<ApiResponse<T>>(`${this.baseUrl}${path}`, body)
+      .pipe(
+        map((response) => this.unwrap(response)),
+        catchError((error) => this.handleError(error))
+      );
   }
 
   patch<T>(path: string, body: unknown = null): Observable<T> {
-    return this.http.patch<ApiResponse<T>>(`${this.baseUrl}${path}`, body).pipe(
-      map((response) => this.unwrap(response)),
-      catchError((error) => this.toClientError(error))
-    );
+    return this.http
+      .patch<ApiResponse<T>>(`${this.baseUrl}${path}`, body)
+      .pipe(
+        map((response) => this.unwrap(response)),
+        catchError((error) => this.handleError(error))
+      );
   }
 
   delete<T>(path: string): Observable<T> {
-    return this.http.delete<ApiResponse<T>>(`${this.baseUrl}${path}`).pipe(
-      map((response) => this.unwrap(response)),
-      catchError((error) => this.toClientError(error))
-    );
+    return this.http
+      .delete<ApiResponse<T>>(`${this.baseUrl}${path}`)
+      .pipe(
+        map((response) => this.unwrap(response)),
+        catchError((error) => this.handleError(error))
+      );
   }
 
   upload<T>(path: string, formData: FormData): Observable<T> {
-    return this.http.post<ApiResponse<T>>(`${this.baseUrl}${path}`, formData).pipe(
-      map((response) => this.unwrap(response)),
-      catchError((error) => this.toClientError(error))
-    );
+    return this.http
+      .post<ApiResponse<T>>(`${this.baseUrl}${path}`, formData)
+      .pipe(
+        map((response) => this.unwrap(response)),
+        catchError((error) => this.handleError(error))
+      );
   }
 
   private unwrap<T>(response: ApiResponse<T>): T {
@@ -85,21 +95,40 @@ export class ApiService {
     return httpParams;
   }
 
-  private toClientError(error: unknown): Observable<never> {
-    if (error instanceof Error && !(error instanceof HttpErrorResponse)) {
-      return throwError(() => error);
-    }
-
+  private handleError(error: unknown): Observable<never> {
     if (error instanceof HttpErrorResponse) {
-      const body = error.error as Partial<ApiResponse<unknown>> | undefined;
-      const message =
-        body?.message ||
-        error.message ||
-        (error.status ? `Request failed with status ${error.status}` : 'Request failed');
+      const payload = error.error as { message?: string; errors?: unknown } | string | null;
+      if (typeof payload === 'object' && payload?.message) {
+        return throwError(() => new Error(payload.message));
+      }
 
-      return throwError(() => new Error(message));
+      if (error.status === 0) {
+        return throwError(() => new Error('Không kết nối được backend. Kiểm tra container server trước nha.'));
+      }
+
+      if (error.status === 502) {
+        return throwError(() => new Error('Backend đang chưa sẵn sàng hoặc đã crash. Xem log linkvault-server.'));
+      }
+
+      if (error.status === 401) {
+        return throwError(() => new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'));
+      }
+
+      if (error.status === 403) {
+        return throwError(() => new Error('Bạn không có quyền thực hiện thao tác này.'));
+      }
+
+      if (error.status === 404) {
+        return throwError(() => new Error('Không tìm thấy dữ liệu được yêu cầu.'));
+      }
+
+      if (error.status >= 500) {
+        return throwError(() => new Error('Backend đang gặp lỗi. Vui lòng thử lại sau hoặc kiểm tra log server.'));
+      }
+
+      return throwError(() => new Error(error.statusText || `HTTP ${error.status}`));
     }
 
-    return throwError(() => new Error('Request failed'));
+    return throwError(() => (error instanceof Error ? error : new Error('Có lỗi không xác định')));
   }
 }

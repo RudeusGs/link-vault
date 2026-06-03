@@ -11,82 +11,125 @@ import { VaultService } from '../../core/services/vault.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <section class="page">
-      <header class="page-header">
+    <section>
+      <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
         <div>
-          <p class="eyebrow">Vaults</p>
-          <h1>Vault library</h1>
+          <h1 class="lv-page-title">Vaults</h1>
+          <p class="lv-muted fs-6 mb-0">Manage your personal collections.</p>
         </div>
-      </header>
+        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openCreate()">
+          <span class="material-symbols-outlined" style="font-size:20px">add_circle</span>
+          New Vault
+        </button>
+      </div>
 
-      <div *ngIf="error" class="error">{{ error }}</div>
+      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
-      <section class="panel stack">
-        <h2>{{ editingId ? 'Edit vault' : 'Create vault' }}</h2>
-        <form class="form-grid" (ngSubmit)="save()">
-          <label>
-            Name
-            <input name="name" required [(ngModel)]="form.name" />
-          </label>
-          <label>
-            Color
-            <input name="color" placeholder="#2f7d6d" [(ngModel)]="form.color" />
-          </label>
-          <label>
-            Icon
-            <input name="icon" placeholder="book-open" [(ngModel)]="form.icon" />
-          </label>
-          <label class="full">
-            Description
-            <textarea name="description" [(ngModel)]="form.description"></textarea>
-          </label>
-          <div class="row full">
-            <button class="btn primary" type="submit">{{ editingId ? 'Update' : 'Create' }}</button>
-            <button class="btn" type="button" (click)="reset()">Cancel</button>
+      <ng-container *ngIf="vaults.length > 0; else emptyTpl">
+        <div class="row g-4">
+          <div class="col-md-6 col-xl-4" *ngFor="let vault of vaults">
+            <article class="lv-card lv-card-hover p-4 h-100 position-relative">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <a class="d-flex align-items-start gap-3 flex-grow-1 min-w-0 text-dark" [routerLink]="['/vaults', vault.id]">
+                  <span class="lv-icon-box lv-icon-box-lg" [style.color]="vault.color || null">
+                    <span class="material-symbols-outlined" style="font-size:28px">{{ iconFor(vault.icon) }}</span>
+                  </span>
+                  <span class="min-w-0">
+                    <strong class="d-block fs-5 text-truncate">{{ vault.name }}</strong>
+                    <small class="lv-muted d-block text-truncate">{{ vault.description || 'No description' }}</small>
+                  </span>
+                </a>
+
+                <div class="dropdown">
+                  <button class="lv-icon-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" (click)="$event.stopPropagation()">
+                    <span class="material-symbols-outlined">more_vert</span>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end border-0 shadow p-2">
+                    <li><a class="dropdown-item rounded-2" [routerLink]="['/vaults', vault.id]">Open</a></li>
+                    <li><button class="dropdown-item rounded-2" type="button" (click)="openEdit(vault)">Edit</button></li>
+                    <li><button class="dropdown-item rounded-2 text-danger" type="button" (click)="delete(vault)">Delete</button></li>
+                  </ul>
+                </div>
+              </div>
+
+              <p class="lv-muted lv-line-clamp-2 mb-4">{{ vault.description || 'A clean collection for organizing folders, links, notes, files and code snippets.' }}</p>
+
+              <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+                <small class="lv-muted">Updated {{ vault.updatedAt | date:'mediumDate' }}</small>
+                <a class="btn btn-sm btn-outline-primary" [routerLink]="['/vaults', vault.id]">
+                  Open
+                  <span class="material-symbols-outlined ms-1" style="font-size:16px">arrow_forward</span>
+                </a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #emptyTpl>
+        <div *ngIf="!loading" class="lv-empty-state">
+          <span class="material-symbols-outlined d-block mb-3" style="font-size:42px">account_balance_wallet</span>
+          <h2 class="lv-section-title">No vaults yet</h2>
+          <p>Create your first vault to start saving links, files, notes and snippets.</p>
+          <button class="btn btn-primary" type="button" (click)="openCreate()">Create vault</button>
+        </div>
+      </ng-template>
+
+      <div *ngIf="loading" class="lv-card p-4">
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Loading vaults...
+      </div>
+    </section>
+
+    <div class="lv-modal-backdrop" *ngIf="showForm" (click)="closeForm()">
+      <section class="lv-modal-card p-4" (click)="$event.stopPropagation()">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h2 class="lv-section-title mb-1">{{ editing ? 'Edit Vault' : 'Create Vault' }}</h2>
+            <p class="lv-muted mb-0">Only visible fields. IDs are handled by the app.</p>
+          </div>
+          <button class="lv-icon-button" type="button" (click)="closeForm()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form class="row g-3" (ngSubmit)="save()">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Name</label>
+            <input class="form-control" name="name" required [(ngModel)]="form.name" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Icon</label>
+            <input class="form-control" name="icon" placeholder="work" [(ngModel)]="form.icon" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Color</label>
+            <input class="form-control form-control-color w-100" name="color" type="color" [(ngModel)]="form.color" />
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea class="form-control" name="description" rows="4" [(ngModel)]="form.description"></textarea>
+          </div>
+          <div class="col-12 d-flex gap-2 justify-content-end">
+            <button class="btn btn-outline-secondary" type="button" (click)="closeForm()">Cancel</button>
+            <button class="btn btn-primary" type="submit" [disabled]="saving">
+              <span *ngIf="saving" class="spinner-border spinner-border-sm me-2"></span>
+              {{ editing ? 'Save changes' : 'Create vault' }}
+            </button>
           </div>
         </form>
       </section>
-
-      <section class="grid cols-3">
-        <article class="card vault-card" *ngFor="let vault of vaults">
-          <div class="row">
-            <span class="swatch" [style.background]="vault.color || '#2f7d6d'"></span>
-            <h2><a [routerLink]="['/vaults', vault.id]">{{ vault.name }}</a></h2>
-          </div>
-          <p class="muted">{{ vault.description || 'No description' }}</p>
-          <div class="row wrap">
-            <button class="btn" type="button" (click)="edit(vault)">Edit</button>
-            <button class="btn danger" type="button" (click)="remove(vault)">Delete</button>
-          </div>
-        </article>
-      </section>
-    </section>
-  `,
-  styles: [
-    `
-      .vault-card {
-        display: grid;
-        gap: 12px;
-      }
-
-      .vault-card a {
-        color: inherit;
-        text-decoration: none;
-      }
-
-      .swatch {
-        width: 16px;
-        height: 16px;
-        border-radius: 4px;
-      }
-    `
-  ]
+    </div>
+  `
 })
 export class VaultsComponent implements OnInit {
   protected vaults: Vault[] = [];
-  protected form: VaultRequest = this.emptyForm();
-  protected editingId?: string;
+  protected loading = false;
+  protected saving = false;
+  protected showForm = false;
+  protected editing?: Vault;
   protected error = '';
+  protected form: VaultRequest = this.emptyForm();
 
   private readonly vaultService = inject(VaultService);
 
@@ -95,38 +138,64 @@ export class VaultsComponent implements OnInit {
   }
 
   protected load(): void {
+    this.loading = true;
+    this.error = '';
     this.vaultService.list().subscribe({
-      next: (vaults) => (this.vaults = vaults),
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not load vaults')
+      next: (vaults) => {
+        this.loading = false;
+        this.vaults = vaults;
+      },
+      error: (error) => {
+        this.loading = false;
+        this.error = error instanceof Error ? error.message : 'Could not load vaults';
+      }
     });
   }
 
+  protected openCreate(): void {
+    this.editing = undefined;
+    this.form = this.emptyForm();
+    this.showForm = true;
+  }
+
+  protected openEdit(vault: Vault): void {
+    this.editing = vault;
+    this.form = {
+      name: vault.name,
+      description: vault.description ?? '',
+      icon: vault.icon ?? 'work',
+      color: vault.color ?? '#003d9b'
+    };
+    this.showForm = true;
+  }
+
+  protected closeForm(): void {
+    this.showForm = false;
+    this.editing = undefined;
+    this.form = this.emptyForm();
+  }
+
   protected save(): void {
-    const action = this.editingId
-      ? this.vaultService.update(this.editingId, this.form)
+    this.saving = true;
+    const action = this.editing
+      ? this.vaultService.update(this.editing.id, this.form)
       : this.vaultService.create(this.form);
 
     action.subscribe({
       next: () => {
-        this.reset();
+        this.saving = false;
+        this.closeForm();
         this.load();
       },
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not save vault')
+      error: (error) => {
+        this.saving = false;
+        this.error = error instanceof Error ? error.message : 'Could not save vault';
+      }
     });
   }
 
-  protected edit(vault: Vault): void {
-    this.editingId = vault.id;
-    this.form = {
-      name: vault.name,
-      description: vault.description,
-      icon: vault.icon,
-      color: vault.color
-    };
-  }
-
-  protected remove(vault: Vault): void {
-    if (!confirm(`Delete vault "${vault.name}" and its contents?`)) {
+  protected delete(vault: Vault): void {
+    if (!confirm(`Delete vault "${vault.name}"?`)) {
       return;
     }
 
@@ -136,18 +205,16 @@ export class VaultsComponent implements OnInit {
     });
   }
 
-  protected reset(): void {
-    this.editingId = undefined;
-    this.form = this.emptyForm();
-    this.error = '';
+  protected iconFor(icon?: string | null): string {
+    return icon?.trim() || 'work';
   }
 
   private emptyForm(): VaultRequest {
     return {
       name: '',
       description: '',
-      icon: '',
-      color: '#2f7d6d'
+      icon: 'work',
+      color: '#003d9b'
     };
   }
 }

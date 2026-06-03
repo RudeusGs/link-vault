@@ -3,7 +3,6 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { LoginRequest } from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -11,108 +10,68 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <section class="auth-page">
-      <article class="auth-card">
-        <div class="auth-brand">
-          <span class="brand-mark">LV</span>
-          <div>
-            <p class="eyebrow">Welcome back</p>
-            <h1>Login to LinkVault</h1>
+    <main class="lv-auth-bg d-flex align-items-center justify-content-center p-3">
+      <section class="lv-auth-card p-4 p-md-5">
+        <div class="text-center mb-4">
+          <div class="d-inline-flex align-items-center justify-content-center lv-primary-bg rounded-3 shadow-sm mb-3" style="width:52px;height:52px">
+            <span class="material-symbols-outlined" style="font-size:30px">shield</span>
           </div>
+          <h1 class="lv-section-title lv-primary mb-1">LinkVault</h1>
+          <p class="lv-muted mb-0">Your secure digital library</p>
         </div>
 
-        <div *ngIf="error" class="error">{{ error }}</div>
+        <form class="d-grid gap-3" (ngSubmit)="login()">
+          <div *ngIf="error" class="alert alert-danger py-2 mb-0">{{ error }}</div>
 
-        <form class="auth-form" (ngSubmit)="login()">
-          <label>
-            Username
-            <input
-              name="username"
-              autocomplete="username"
-              required
-              minlength="3"
-              [(ngModel)]="form.username"
-            />
-          </label>
+          <div>
+            <label class="form-label fw-semibold">Username</label>
+            <div class="position-relative">
+              <span class="material-symbols-outlined lv-input-icon">person</span>
+              <input class="form-control lv-input-with-icon" name="username" required autocomplete="username" placeholder="quan1908" [(ngModel)]="username" />
+            </div>
+          </div>
 
-          <label>
-            Password
-            <input
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-              [(ngModel)]="form.password"
-            />
-          </label>
+          <div>
+            <label class="form-label fw-semibold">Password</label>
+            <div class="position-relative">
+              <span class="material-symbols-outlined lv-input-icon">lock</span>
+              <input class="form-control lv-input-with-icon" name="password" required autocomplete="current-password" placeholder="••••••••" [type]="showPassword ? 'text' : 'password'" [(ngModel)]="password" />
+              <button class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 border-0" type="button" (click)="showPassword = !showPassword">
+                <span class="material-symbols-outlined" style="font-size:20px">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+            </div>
+          </div>
 
-          <button class="btn primary" type="submit" [disabled]="loading">
-            {{ loading ? 'Logging in...' : 'Login' }}
+          <div class="d-flex align-items-center justify-content-between small">
+            <label class="form-check-label d-flex align-items-center gap-2">
+              <input class="form-check-input m-0" type="checkbox" />
+              Remember me
+            </label>
+            <a class="lv-primary fw-semibold" href="javascript:void(0)">Forgot password?</a>
+          </div>
+
+          <button class="btn btn-primary py-2 fw-semibold" type="submit" [disabled]="loading">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+            Sign in
           </button>
         </form>
 
-        <p class="auth-footer">
-          New here?
-          <a routerLink="/register">Create an account</a>
-        </p>
-      </article>
-    </section>
-  `,
-  styles: [
-    `
-      .auth-page {
-        display: grid;
-        min-height: 100dvh;
-        place-items: center;
-        padding: 24px;
-        background: linear-gradient(135deg, #183c36, #f4f7f6);
-      }
-
-      .auth-card {
-        display: grid;
-        width: min(100%, 430px);
-        gap: 18px;
-        padding: 28px;
-        border: 1px solid #d8e4df;
-        border-radius: 14px;
-        background: #ffffff;
-        box-shadow: 0 18px 50px rgba(31, 41, 51, 0.16);
-      }
-
-      .auth-brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .brand-mark {
-        display: inline-grid;
-        width: 44px;
-        height: 44px;
-        place-items: center;
-        border-radius: 10px;
-        color: #183c36;
-        background: #f6c66d;
-        font-weight: 900;
-      }
-
-      .auth-form {
-        display: grid;
-        gap: 14px;
-      }
-
-      .auth-footer {
-        text-align: center;
-      }
-    `
-  ]
+        <div class="text-center mt-4 pt-3 border-top">
+          <span class="lv-muted">New to LinkVault?</span>
+          <a class="lv-primary fw-semibold ms-1" routerLink="/register">Create account</a>
+        </div>
+      </section>
+    </main>
+  `
 })
 export class LoginComponent {
-  protected form: LoginRequest = { username: '', password: '' };
+  protected username = '';
+  protected password = '';
   protected loading = false;
   protected error = '';
+  protected showPassword = false;
 
-  private readonly authService = inject(AuthService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -120,17 +79,15 @@ export class LoginComponent {
     this.error = '';
     this.loading = true;
 
-    this.authService.login({
-      username: this.form.username.trim(),
-      password: this.form.password
-    }).subscribe({
+    this.auth.login({ username: this.username.trim(), password: this.password }).subscribe({
       next: () => {
+        this.loading = false;
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
         this.router.navigateByUrl(returnUrl);
       },
       error: (error) => {
         this.loading = false;
-        this.error = error instanceof Error ? error.message : 'Could not login';
+        this.error = error instanceof Error ? error.message : 'Could not sign in';
       }
     });
   }

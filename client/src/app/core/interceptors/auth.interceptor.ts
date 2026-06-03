@@ -6,12 +6,17 @@ import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
-  const authService = inject(AuthService);
+  const auth = inject(AuthService);
   const router = inject(Router);
-  const token = authService.getAccessToken();
+  const token = auth.token();
 
-  const shouldAttachToken = Boolean(token) && request.url.includes('/api/');
-  const authRequest = shouldAttachToken
+  const isApiRequest =
+    request.url.includes('/api/') ||
+    request.url.endsWith('/api') ||
+    request.url.startsWith('http://localhost:8080/api');
+  const shouldAttach = Boolean(token) && isApiRequest;
+
+  const authRequest = shouldAttach
     ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
     : request;
 
@@ -23,8 +28,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         !request.url.includes('/auth/login') &&
         !request.url.includes('/auth/register')
       ) {
-        authService.clearSession();
-        router.navigateByUrl('/login');
+        auth.logout();
+        router.navigate(['/login']);
       }
 
       return throwError(() => error);

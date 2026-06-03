@@ -1,151 +1,460 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, ViewChild, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { Folder, FolderRequest } from '../../core/models/folder.model';
-import { Vault } from '../../core/models/vault.model';
+import { ResourceType } from '../../core/models/resource.model';
+import { Vault, VaultRequest } from '../../core/models/vault.model';
 import { FolderService } from '../../core/services/folder.service';
 import { VaultService } from '../../core/services/vault.service';
 import { ResourceFormComponent } from '../resources/resource-form.component';
 import { ResourceListComponent } from '../resources/resource-list.component';
+
+interface FolderNode extends Folder {
+  children: FolderNode[];
+  expanded: boolean;
+}
 
 @Component({
   selector: 'app-vault-detail',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, ResourceFormComponent, ResourceListComponent],
   template: `
-    <section class="page" *ngIf="vaultId">
-      <header class="page-header">
+    <section *ngIf="vault; else loadingTpl">
+      <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
         <div>
-          <p class="eyebrow">Vault</p>
-          <h1>{{ vault?.name || 'Vault' }}</h1>
-          <p class="muted">{{ vault?.description }}</p>
-        </div>
-        <a class="btn" routerLink="/vaults">Back to vaults</a>
-      </header>
-
-      <div *ngIf="error" class="error">{{ error }}</div>
-
-      <section class="grid cols-2">
-        <article class="panel stack">
-          <h2>Create folder</h2>
-          <p class="muted">Folder will be created inside this vault. No manual ID input needed.</p>
-          <form class="form-grid" (ngSubmit)="createFolder()">
-            <label>
-              Name
-              <input name="folderName" required [(ngModel)]="folderForm.name" />
-            </label>
-            <label>
-              Sort order
-              <input name="sortOrder" type="number" [(ngModel)]="folderForm.sortOrder" />
-            </label>
-            <label class="full">
-              Description
-              <textarea name="folderDescription" [(ngModel)]="folderForm.description"></textarea>
-            </label>
-            <button class="btn primary full" type="submit">Create folder</button>
-          </form>
-        </article>
-
-        <article class="panel stack">
-          <h2>Folders</h2>
-          <p *ngIf="folders.length === 0" class="muted">No folders yet.</p>
-          <div *ngFor="let folder of folders" class="folder-row">
-            <div>
-              <a [routerLink]="['/folders', folder.id]"><strong>{{ folder.name }}</strong></a>
-              <p class="muted">{{ folder.description || 'No description' }}</p>
-            </div>
-            <button class="btn danger" type="button" (click)="deleteFolder(folder)">Delete</button>
+          <a routerLink="/vaults" class="d-inline-flex align-items-center gap-2 lv-primary fw-semibold mb-2">
+            <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span>
+            Back to Vaults
+          </a>
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <h1 class="lv-page-title">{{ vault.name }}</h1>
+            <span class="badge rounded-pill lv-badge-soft px-3 py-2">Active Project</span>
           </div>
-        </article>
-      </section>
+          <p class="lv-muted mb-0 mt-1" style="max-width:760px">{{ vault.description || 'Centralized resource hub for links, files, notes and snippets.' }}</p>
+        </div>
 
-      <app-resource-form [vaultId]="vaultId" (saved)="resourceList.load()" />
-      <app-resource-list #resourceList title="Vault resources" [vaultId]="vaultId" />
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-primary d-inline-flex align-items-center gap-2" type="button" (click)="openVaultEdit()">
+            <span class="material-symbols-outlined" style="font-size:18px">edit</span>
+            Edit
+          </button>
+          <button class="btn btn-outline-danger d-inline-flex align-items-center gap-2" type="button" (click)="deleteVault()">
+            <span class="material-symbols-outlined" style="font-size:18px">delete</span>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+      <div class="row g-4">
+        <div class="col-lg-4 col-xl-3">
+          <aside class="lv-soft-panel lv-folder-panel d-flex flex-column">
+            <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <span class="material-symbols-outlined lv-primary">folder_shared</span>
+                <strong>Folders</strong>
+              </div>
+              <button class="lv-icon-button" type="button" title="New folder" (click)="openFolderCreate(null)">
+                <span class="material-symbols-outlined">create_new_folder</span>
+              </button>
+            </div>
+
+            <div class="flex-grow-1 p-2 lv-tree-scroll">
+              <div class="lv-folder-row d-flex align-items-center gap-1">
+                <button class="lv-folder-node d-flex align-items-center justify-content-between" [class.active]="!selectedFolder" type="button" (click)="selectRoot()">
+                  <span class="d-flex align-items-center gap-2 min-w-0">
+                    <span class="material-symbols-outlined" style="font-size:20px">folder_open</span>
+                    <span class="fw-semibold text-truncate">All Resources</span>
+                  </span>
+                  <small class="lv-muted">{{ folders.length }}</small>
+                </button>
+              </div>
+
+              <ul class="list-unstyled m-0 mt-1">
+                <ng-container *ngFor="let folder of tree">
+                  <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: folder, level: 0 }"></ng-container>
+                </ng-container>
+              </ul>
+            </div>
+
+            <div class="p-3 border-top">
+              <button class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2" type="button" (click)="openFolderCreate(selectedFolder || null)">
+                <span class="material-symbols-outlined" style="font-size:18px">add</span>
+                New Folder
+              </button>
+            </div>
+          </aside>
+        </div>
+
+        <div class="col-lg-8 col-xl-9">
+          <section class="lv-card p-4 mb-4">
+            <nav class="d-flex align-items-center gap-2 lv-muted small mb-3 flex-wrap">
+              <a routerLink="/vaults" class="lv-primary">Vaults</a>
+              <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+              <span>{{ vault.name }}</span>
+              <ng-container *ngIf="selectedFolder">
+                <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+                <strong class="text-dark">{{ selectedFolder.name }}</strong>
+              </ng-container>
+            </nav>
+
+            <div class="d-flex flex-column flex-xl-row align-items-xl-end justify-content-between gap-3 mb-4">
+              <div>
+                <h2 class="lv-page-title fs-2">{{ selectedFolder?.name || vault.name }}</h2>
+                <p class="lv-muted mb-0">{{ selectedFolder?.description || (selectedFolder ? 'Selected folder resources.' : 'Resources stored in vault root.') }}</p>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" (click)="openFolderCreate(selectedFolder || null)">
+                  <span class="material-symbols-outlined" style="font-size:18px">create_new_folder</span>
+                  New Folder
+                </button>
+                <button class="btn btn-outline-primary" type="button" (click)="openResource('LINK')">New Link</button>
+                <button class="btn btn-outline-primary" type="button" (click)="openResource('NOTE')">New Note</button>
+                <button class="btn btn-outline-primary" type="button" (click)="openResource('SNIPPET')">New Snippet</button>
+                <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openResource('FILE')">
+                  <span class="material-symbols-outlined" style="font-size:18px">upload</span>
+                  Upload
+                </button>
+              </div>
+            </div>
+
+            <app-resource-list
+              #resourceList
+              [title]="selectedFolder ? 'Folder resources' : 'Vault resources'"
+              [vaultId]="vault.id"
+              [folderId]="selectedFolder?.id || null"
+              [rootOnly]="!selectedFolder"
+            />
+          </section>
+        </div>
+      </div>
+
+      <app-resource-form #resourceForm [vaultId]="vault.id" [folderId]="selectedFolder?.id || null" (saved)="reloadResources()" />
     </section>
-  `,
-  styles: [
-    `
-      .folder-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 12px;
-        border-radius: 8px;
-        background: #f5faf8;
-      }
-    `
-  ]
+
+    <ng-template #folderTpl let-folder let-level="level">
+      <li [style.marginLeft.px]="level * 16">
+        <div class="lv-folder-row d-flex align-items-center gap-1">
+          <button class="lv-folder-node d-flex align-items-center justify-content-between" [class.active]="selectedFolder?.id === folder.id" type="button" (click)="selectFolder(folder)">
+            <span class="d-flex align-items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined" style="font-size:20px" (click)="toggleFolder(folder, $event)">{{ folder.expanded ? 'expand_more' : 'chevron_right' }}</span>
+              <span class="material-symbols-outlined" style="font-size:20px">{{ folder.expanded ? 'folder_open' : 'folder' }}</span>
+              <span class="fw-semibold text-truncate">{{ folder.name }}</span>
+            </span>
+            <span class="lv-node-actions d-flex gap-1">
+              <span class="material-symbols-outlined" style="font-size:16px" (click)="openFolderCreate(folder, $event)">add</span>
+              <span class="material-symbols-outlined" style="font-size:16px" (click)="openFolderEdit(folder, $event)">edit</span>
+              <span class="material-symbols-outlined text-danger" style="font-size:16px" (click)="deleteFolder(folder, $event)">delete</span>
+            </span>
+          </button>
+        </div>
+        <ul *ngIf="folder.expanded && folder.children.length" class="list-unstyled m-0 border-start ms-3 ps-2">
+          <ng-container *ngFor="let child of folder.children">
+            <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: child, level: level + 1 }"></ng-container>
+          </ng-container>
+        </ul>
+      </li>
+    </ng-template>
+
+    <div class="lv-modal-backdrop" *ngIf="folderModalOpen" (click)="closeFolderModal()">
+      <section class="lv-modal-card p-4" (click)="$event.stopPropagation()">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h2 class="lv-section-title mb-1">{{ editingFolder ? 'Edit Folder' : 'Create Folder' }}</h2>
+            <p class="lv-muted mb-0">{{ folderParent ? 'Child folder under ' + folderParent.name : 'Root folder inside ' + vault?.name }}</p>
+          </div>
+          <button class="lv-icon-button" type="button" (click)="closeFolderModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form class="row g-3" (ngSubmit)="saveFolder()">
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Name</label>
+            <input class="form-control" name="folderName" required [(ngModel)]="folderForm.name" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Sort order</label>
+            <input class="form-control" name="sortOrder" type="number" [(ngModel)]="folderForm.sortOrder" />
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea class="form-control" name="folderDescription" rows="3" [(ngModel)]="folderForm.description"></textarea>
+          </div>
+          <div class="col-12 d-flex gap-2 justify-content-end">
+            <button class="btn btn-outline-secondary" type="button" (click)="closeFolderModal()">Cancel</button>
+            <button class="btn btn-primary" type="submit" [disabled]="savingFolder">
+              <span *ngIf="savingFolder" class="spinner-border spinner-border-sm me-2"></span>
+              Save folder
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="lv-modal-backdrop" *ngIf="vaultModalOpen" (click)="vaultModalOpen = false">
+      <section class="lv-modal-card p-4" (click)="$event.stopPropagation()">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <h2 class="lv-section-title">Edit Vault</h2>
+          <button class="lv-icon-button" type="button" (click)="vaultModalOpen = false"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <form class="row g-3" (ngSubmit)="saveVault()">
+          <div class="col-md-6"><label class="form-label fw-semibold">Name</label><input class="form-control" name="vaultName" required [(ngModel)]="vaultForm.name" /></div>
+          <div class="col-md-3"><label class="form-label fw-semibold">Icon</label><input class="form-control" name="vaultIcon" [(ngModel)]="vaultForm.icon" /></div>
+          <div class="col-md-3"><label class="form-label fw-semibold">Color</label><input class="form-control form-control-color w-100" name="vaultColor" type="color" [(ngModel)]="vaultForm.color" /></div>
+          <div class="col-12"><label class="form-label fw-semibold">Description</label><textarea class="form-control" name="vaultDescription" rows="3" [(ngModel)]="vaultForm.description"></textarea></div>
+          <div class="col-12 d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary" type="button" (click)="vaultModalOpen = false">Cancel</button><button class="btn btn-primary" type="submit">Save changes</button></div>
+        </form>
+      </section>
+    </div>
+
+    <ng-template #loadingTpl>
+      <div class="lv-card p-4">
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Loading vault...
+      </div>
+    </ng-template>
+  `
 })
 export class VaultDetailComponent implements OnInit {
-  @ViewChild('resourceList') resourceList!: ResourceListComponent;
+  @ViewChild('resourceForm') resourceForm!: ResourceFormComponent;
+  @ViewChild('resourceList') resourceList?: ResourceListComponent;
 
-  protected vaultId = '';
   protected vault?: Vault;
   protected folders: Folder[] = [];
+  protected tree: FolderNode[] = [];
+  protected selectedFolder: FolderNode | null = null;
   protected error = '';
+  protected folderModalOpen = false;
+  protected vaultModalOpen = false;
+  protected savingFolder = false;
+  protected editingFolder?: FolderNode;
+  protected folderParent: FolderNode | null = null;
+  protected vaultForm: VaultRequest = this.emptyVaultForm();
   protected folderForm: FolderRequest = this.emptyFolderForm();
 
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly vaultService = inject(VaultService);
   private readonly folderService = inject(FolderService);
+  private loadRequestId = 0;
 
   ngOnInit(): void {
-    this.vaultId = this.route.snapshot.paramMap.get('vaultId') ?? '';
-    this.folderForm = this.emptyFolderForm();
-    this.load();
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.load()
+    });
   }
 
   protected load(): void {
-    if (!this.vaultId) {
+    const vaultId = this.route.snapshot.paramMap.get('vaultId');
+    if (!vaultId) {
       return;
     }
 
-    this.vaultService.get(this.vaultId).subscribe({
-      next: (vault) => (this.vault = vault),
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not load vault')
+    const requestId = ++this.loadRequestId;
+    this.error = '';
+
+    this.vaultService.get(vaultId).subscribe({
+      next: (vault) => {
+        if (requestId !== this.loadRequestId) {
+          return;
+        }
+
+        this.vault = vault;
+        this.vaultForm = {
+          name: vault.name,
+          description: vault.description ?? '',
+          icon: vault.icon ?? 'work',
+          color: vault.color ?? '#003d9b'
+        };
+      },
+      error: (error) => {
+        if (requestId === this.loadRequestId) {
+          this.error = error instanceof Error ? error.message : 'Could not load vault';
+        }
+      }
     });
 
-    this.folderService.listByVault(this.vaultId).subscribe({
-      next: (folders) => (this.folders = folders.filter((folder) => !folder.parentId)),
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not load folders')
+    this.folderService.listByVault(vaultId).subscribe({
+      next: (folders) => {
+        if (requestId !== this.loadRequestId) {
+          return;
+        }
+
+        this.folders = folders;
+        this.tree = this.buildTree(folders);
+        if (this.selectedFolder) {
+          this.selectedFolder = this.findNode(this.tree, this.selectedFolder.id);
+        }
+      },
+      error: (error) => {
+        if (requestId === this.loadRequestId) {
+          this.error = error instanceof Error ? error.message : 'Could not load folders';
+        }
+      }
     });
   }
 
-  protected createFolder(): void {
-    if (!this.vaultId) {
-      this.error = 'Vault context is missing';
+  protected selectRoot(): void {
+    this.selectedFolder = null;
+  }
+
+  protected selectFolder(folder: FolderNode): void {
+    this.selectedFolder = folder;
+  }
+
+  protected toggleFolder(folder: FolderNode, event: Event): void {
+    event.stopPropagation();
+    folder.expanded = !folder.expanded;
+  }
+
+  protected openResource(type: ResourceType): void {
+    this.resourceForm.open(type);
+  }
+
+  protected reloadResources(): void {
+    this.resourceList?.load();
+  }
+
+  protected openFolderCreate(parent: FolderNode | null, event?: Event): void {
+    event?.stopPropagation();
+    this.editingFolder = undefined;
+    this.folderParent = parent;
+    this.folderForm = this.emptyFolderForm();
+    this.folderModalOpen = true;
+  }
+
+  protected openFolderEdit(folder: FolderNode, event?: Event): void {
+    event?.stopPropagation();
+    this.editingFolder = folder;
+    this.folderParent = null;
+    this.folderForm = {
+      name: folder.name,
+      description: folder.description ?? '',
+      icon: folder.icon ?? 'folder',
+      sortOrder: folder.sortOrder ?? 0
+    };
+    this.folderModalOpen = true;
+  }
+
+  protected closeFolderModal(): void {
+    this.folderModalOpen = false;
+    this.editingFolder = undefined;
+    this.folderParent = null;
+    this.folderForm = this.emptyFolderForm();
+  }
+
+  protected saveFolder(): void {
+    if (!this.vault) {
       return;
     }
 
-    this.folderService.createInVault(this.vaultId, this.folderForm).subscribe({
+    this.savingFolder = true;
+    const action = this.editingFolder
+      ? this.folderService.update(this.editingFolder.id, this.folderForm)
+      : this.folderParent
+        ? this.folderService.createChild(this.folderParent.id, this.folderForm)
+        : this.folderService.createInVault(this.vault.id, this.folderForm);
+
+    action.subscribe({
       next: () => {
-        this.folderForm = this.emptyFolderForm();
+        this.savingFolder = false;
+        this.closeFolderModal();
         this.load();
       },
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not create folder')
+      error: (error) => {
+        this.savingFolder = false;
+        this.error = error instanceof Error ? error.message : 'Could not save folder';
+      }
     });
   }
 
-  protected deleteFolder(folder: Folder): void {
+  protected deleteFolder(folder: FolderNode, event?: Event): void {
+    event?.stopPropagation();
     if (!confirm(`Delete folder "${folder.name}" and its resources?`)) {
       return;
     }
 
     this.folderService.delete(folder.id).subscribe({
-      next: () => this.load(),
+      next: () => {
+        if (this.selectedFolder?.id === folder.id) {
+          this.selectedFolder = null;
+        }
+        this.load();
+      },
       error: (error) => (this.error = error instanceof Error ? error.message : 'Could not delete folder')
     });
   }
 
+  protected openVaultEdit(): void {
+    this.vaultModalOpen = true;
+  }
+
+  protected saveVault(): void {
+    if (!this.vault) {
+      return;
+    }
+
+    this.vaultService.update(this.vault.id, this.vaultForm).subscribe({
+      next: () => {
+        this.vaultModalOpen = false;
+        this.load();
+      },
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update vault')
+    });
+  }
+
+  protected deleteVault(): void {
+    if (!this.vault || !confirm(`Delete vault "${this.vault.name}"?`)) {
+      return;
+    }
+
+    this.vaultService.delete(this.vault.id).subscribe({
+      next: () => this.router.navigate(['/vaults']),
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not delete vault')
+    });
+  }
+
+  private buildTree(folders: Folder[]): FolderNode[] {
+    const map = new Map<string, FolderNode>();
+    folders.forEach((folder) => map.set(folder.id, { ...folder, children: [], expanded: true }));
+
+    const roots: FolderNode[] = [];
+    map.forEach((node) => {
+      const parentId = node.parentId ?? null;
+      if (parentId && map.has(parentId)) {
+        map.get(parentId)?.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    return roots.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name));
+  }
+
+  private findNode(nodes: FolderNode[], id: string): FolderNode | null {
+    for (const node of nodes) {
+      if (node.id === id) {
+        return node;
+      }
+      const child = this.findNode(node.children, id);
+      if (child) {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  private emptyVaultForm(): VaultRequest {
+    return { name: '', description: '', icon: 'work', color: '#003d9b' };
+  }
+
   private emptyFolderForm(): FolderRequest {
-    return {
-      name: '',
-      description: '',
-      icon: 'folder',
-      sortOrder: 0
-    };
+    return { name: '', description: '', icon: 'folder', sortOrder: 0 };
   }
 }
