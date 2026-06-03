@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: linkvault-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-link_vault_db}
+      POSTGRES_USER: ${POSTGRES_USER:-linkvault}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linkvault123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - linkvault_pgdata:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - linkvault-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: linkvault-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@linkvault.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - linkvault-network
+
+  server:
+    build:
+      context: ./server
+    container_name: linkvault-server
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/link_vault_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-linkvault}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-linkvault123}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER:-link-vault}
+      CLOUDINARY_USE_SECURE_URL: ${CLOUDINARY_USE_SECURE_URL:-true}
+      CLOUDINARY_MAX_FILE_SIZE_MB: ${CLOUDINARY_MAX_FILE_SIZE_MB:-20}
+      CLOUDINARY_ALLOWED_FORMATS: ${CLOUDINARY_ALLOWED_FORMATS:-jpg,jpeg,png,webp,gif,pdf,txt,md,json,java,ts,js,html,css}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - linkvault-network
+
+  client:
+    build:
+      context: ./client
+    container_name: linkvault-client
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - server
+    networks:
+      - linkvault-network
+
+volumes:
+  linkvault_pgdata:
+
+networks:
+  linkvault-network:
+    driver: bridge

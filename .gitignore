@@ -1,0 +1,15 @@
+.env
+.vscode/
+.codex-*.log
+*.log
+
+node_modules/
+dist/
+.angular/
+target/
+build/
+
+*.iml
+.idea/
+
+client/.git.local-backup/

@@ -1,0 +1,142 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  color: #1f2933;
+  background: #f4f7f6;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.sidebar {
+  display: flex;
+  position: sticky;
+  top: 0;
+  flex-direction: column;
+  gap: 28px;
+  height: 100dvh;
+  padding: 24px 18px;
+  color: #eef6f3;
+  background: #183c36;
+}
+
+.brand,
+.nav-list a,
+.health {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 10px;
+  color: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 8px;
+  color: #183c36;
+  background: #f6c66d;
+}
+
+.nav-list {
+  display: grid;
+  gap: 6px;
+}
+
+.nav-list a {
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #d7e5e1;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nav-list a.active,
+.nav-list a:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.health {
+  gap: 12px;
+  margin-top: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.health strong,
+.health span:last-child {
+  display: block;
+}
+
+.health strong {
+  text-transform: capitalize;
+}
+
+.health span:last-child {
+  color: #d7e5e1;
+  font-size: 0.82rem;
+}
+
+.health-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #9aa8a2;
+}
+
+.health.online .health-dot {
+  background: #43d18a;
+}
+
+.health.offline .health-dot {
+  background: #ff766f;
+}
+
+.workspace {
+  min-width: 0;
+  padding: 28px;
+}
+
+@media (max-width: 820px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .nav-list a {
+    justify-content: center;
+  }
+
+  .health {
+    margin-top: 0;
+  }
+
+  .workspace {
+    padding: 20px;
+  }
+}

@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: LinkVaultApi
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/link_vault_db}
+    username: ${SPRING_DATASOURCE_USERNAME:linkvault}
+    password: ${SPRING_DATASOURCE_PASSWORD:linkvault123}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+server:
+  port: 8080
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:4200
+      - http://127.0.0.1:4200
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  folder: ${CLOUDINARY_FOLDER:link-vault}
+  use-secure-url: ${CLOUDINARY_USE_SECURE_URL:true}
+  max-file-size-mb: ${CLOUDINARY_MAX_FILE_SIZE_MB:20}
+  allowed-formats: ${CLOUDINARY_ALLOWED_FORMATS:jpg,jpeg,png,webp,gif,pdf,txt,md,json,java,ts,js,html,css}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha

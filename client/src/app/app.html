@@ -1,0 +1,31 @@
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Primary navigation">
+    <a class="brand" routerLink="/dashboard" aria-label="LinkVault dashboard">
+      <span class="brand-mark">LV</span>
+      <span>LinkVault</span>
+    </a>
+
+    <nav class="nav-list">
+      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/vaults" routerLinkActive="active">Vaults</a>
+      <a routerLink="/tags" routerLinkActive="active">Tags</a>
+    </nav>
+
+    <div
+      class="health"
+      [class.checking]="healthState() === 'checking'"
+      [class.online]="healthState() === 'online'"
+      [class.offline]="healthState() === 'offline'"
+    >
+      <span class="health-dot" aria-hidden="true"></span>
+      <div>
+        <strong>{{ healthState() }}</strong>
+        <span>{{ healthMessage() }}</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <router-outlet />
+  </main>
+</div>
