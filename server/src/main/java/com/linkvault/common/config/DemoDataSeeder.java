@@ -60,7 +60,7 @@ public class DemoDataSeeder implements CommandLineRunner {
         vault.setUser(user);
         vault.setName("Learning");
         vault.setDescription("A small demo vault for LinkVault");
-        vault.setIcon("book-open");
+        vault.setIcon("menu_book");
         vault.setColor("#2f7d6d");
         vault = vaultRepository.save(vault);
 

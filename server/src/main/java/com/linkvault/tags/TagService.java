@@ -40,7 +40,8 @@ public class TagService {
     @Transactional
     public TagResponse create(TagRequest request) {
         User user = userContextService.getCurrentUser();
-        ensureNameAvailable(user.getId(), request.name(), null);
+        String name = normalizeName(request.name());
+        ensureNameAvailable(user.getId(), name, null);
 
         Tag tag = new Tag();
         tag.setUser(user);
@@ -52,7 +53,8 @@ public class TagService {
     @Transactional
     public TagResponse update(UUID id, TagRequest request) {
         Tag tag = getTag(id);
-        ensureNameAvailable(tag.getUser().getId(), request.name(), tag.getName());
+        String name = normalizeName(request.name());
+        ensureNameAvailable(tag.getUser().getId(), name, tag.getName());
         applyRequest(tag, request);
         return toResponse(tagRepository.save(tag));
     }
@@ -116,12 +118,11 @@ public class TagService {
         return usage;
     }
 
-    private void ensureNameAvailable(UUID userId, String requestedName, String currentName) {
-        String normalized = requestedName == null ? "" : requestedName.trim();
-        if (currentName != null && currentName.equalsIgnoreCase(normalized)) {
+    private void ensureNameAvailable(UUID userId, String normalizedName, String currentName) {
+        if (currentName != null && currentName.equalsIgnoreCase(normalizedName)) {
             return;
         }
-        if (tagRepository.existsByUser_IdAndNameIgnoreCase(userId, normalized)) {
+        if (tagRepository.existsByUser_IdAndNameIgnoreCase(userId, normalizedName)) {
             throw new BadRequestException("Tag name already exists");
         }
     }
@@ -134,7 +135,23 @@ public class TagService {
     }
 
     private void applyRequest(Tag tag, TagRequest request) {
-        tag.setName(request.name().trim());
-        tag.setColor(request.color());
+        tag.setName(normalizeName(request.name()));
+        tag.setColor(normalizeColor(request.color()));
+    }
+
+    private String normalizeName(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException("Tag name is required");
+        }
+        return value.trim();
+    }
+
+    private String normalizeColor(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }
+
+

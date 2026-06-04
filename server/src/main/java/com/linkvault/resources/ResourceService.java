@@ -5,6 +5,7 @@ import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.folders.Folder;
 import com.linkvault.folders.FolderService;
+import com.linkvault.storage.StorageFile;
 import com.linkvault.storage.StorageResult;
 import com.linkvault.storage.StorageService;
 import com.linkvault.tags.Tag;
@@ -14,6 +15,16 @@ import com.linkvault.users.User;
 import com.linkvault.users.UserContextService;
 import com.linkvault.vaults.Vault;
 import com.linkvault.vaults.VaultService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
+import java.io.ByteArrayInputStream;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +33,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,7 +53,9 @@ public class ResourceService {
     private final FolderService folderService;
     private final TagService tagService;
     private final StorageService storageService;
+    private final LinkPreviewService linkPreviewService;
     private final UserContextService userContextService;
+    private final EntityManager entityManager;
 
     public ResourceService(
         ResourceRepository resourceRepository,
@@ -46,7 +65,9 @@ public class ResourceService {
         FolderService folderService,
         TagService tagService,
         StorageService storageService,
-        UserContextService userContextService
+        LinkPreviewService linkPreviewService,
+        UserContextService userContextService,
+        EntityManager entityManager
     ) {
         this.resourceRepository = resourceRepository;
         this.resourceTagRepository = resourceTagRepository;
@@ -55,7 +76,9 @@ public class ResourceService {
         this.folderService = folderService;
         this.tagService = tagService;
         this.storageService = storageService;
+        this.linkPreviewService = linkPreviewService;
         this.userContextService = userContextService;
+        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -95,7 +118,7 @@ public class ResourceService {
             throw new BadRequestException("Folder must belong to the selected vault");
         }
 
-        return toResponses(resourceRepository.search(
+        return toResponses(searchResources(
             user.getId(),
             cleanKeyword(keyword),
             type,
@@ -105,6 +128,76 @@ public class ResourceService {
             rootOnly,
             favorite
         ));
+    }
+
+    private List<Resource> searchResources(
+        UUID userId,
+        String keyword,
+        ResourceType type,
+        UUID tagId,
+        UUID vaultId,
+        UUID folderId,
+        Boolean rootOnly,
+        Boolean favorite
+    ) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Resource> query = cb.createQuery(Resource.class);
+        Root<Resource> resource = query.from(Resource.class);
+
+        resource.fetch("vault", JoinType.INNER);
+        resource.fetch("folder", JoinType.LEFT);
+
+        Join<Resource, Vault> vault = resource.join("vault", JoinType.INNER);
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.equal(vault.get("user").<UUID>get("id"), userId));
+
+        if (keyword != null) {
+            String pattern = "%" + keyword.toLowerCase(Locale.ROOT) + "%";
+            predicates.add(cb.or(
+                cb.like(cb.lower(resource.<String>get("title")), pattern),
+                cb.like(cb.lower(cb.coalesce(resource.<String>get("description"), "")), pattern),
+                cb.like(cb.lower(cb.coalesce(resource.<String>get("url"), "")), pattern),
+                cb.like(cb.lower(cb.coalesce(resource.<String>get("content"), "")), pattern)
+            ));
+        }
+
+        if (type != null) {
+            predicates.add(cb.equal(resource.get("resourceType"), type));
+        }
+
+        if (vaultId != null) {
+            predicates.add(cb.equal(vault.<UUID>get("id"), vaultId));
+        }
+
+        if (folderId != null) {
+            predicates.add(cb.equal(resource.get("folder").<UUID>get("id"), folderId));
+        }
+
+        if (Boolean.TRUE.equals(rootOnly)) {
+            predicates.add(cb.isNull(resource.get("folder")));
+        }
+
+        if (favorite != null) {
+            predicates.add(cb.equal(resource.<Boolean>get("isFavorite"), favorite));
+        }
+
+        if (tagId != null) {
+            Subquery<UUID> tagSubquery = query.subquery(UUID.class);
+            Root<ResourceTag> resourceTag = tagSubquery.from(ResourceTag.class);
+            tagSubquery.select(resourceTag.<UUID>get("id"));
+            tagSubquery.where(
+                cb.equal(resourceTag.get("resource"), resource),
+                cb.equal(resourceTag.get("tag").<UUID>get("id"), tagId)
+            );
+            predicates.add(cb.exists(tagSubquery));
+        }
+
+        query.select(resource)
+            .distinct(true)
+            .where(predicates.toArray(Predicate[]::new))
+            .orderBy(cb.desc(resource.get("createdAt")));
+
+        return entityManager.createQuery(query).getResultList();
     }
 
     @Transactional(readOnly = true)
@@ -127,12 +220,18 @@ public class ResourceService {
     @Transactional
     public ResourceResponse update(UUID id, ResourceRequest request) {
         Resource resource = getResource(id);
+        String previousUrl = resource.getUrl();
+
+        if (request.resourceType() == ResourceType.FILE && resource.getResourceType() != ResourceType.FILE) {
+            throw new BadRequestException("Use upload endpoint to create file resources");
+        }
 
         if (resource.getResourceType() == ResourceType.FILE && request.resourceType() != ResourceType.FILE) {
             clearFileFields(resource);
         }
 
         applyRequest(resource, request, resource.getVault(), resource.getFolder());
+        refreshPreviewIfNeeded(resource, previousUrl, false);
         return toResponse(resourceRepository.save(resource));
     }
 
@@ -217,6 +316,17 @@ public class ResourceService {
         return toResponse(resource);
     }
 
+    @Transactional
+    public ResourceResponse refreshLinkPreview(UUID id) {
+        Resource resource = getResource(id);
+        if (resource.getResourceType() != ResourceType.LINK) {
+            throw new BadRequestException("Only link resources can refresh link preview");
+        }
+
+        applyLinkPreview(resource, true, false);
+        return toResponse(resourceRepository.save(resource));
+    }
+
     @Transactional(readOnly = true)
     public ResourcePreviewResponse preview(UUID id) {
         Resource resource = getResource(id);
@@ -239,11 +349,70 @@ public class ResourceService {
             resource.getId(),
             resource.getResourceType(),
             resource.getTitle(),
-            resource.getFileUrl(),
+            "/api/resources/" + resource.getId() + "/file",
             resource.getMimeType(),
             resource.getFileName(),
             supported,
             supported ? null : "Preview is not supported for this file type"
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ResourceFileContent fileContent(UUID id) {
+        Resource resource = getResource(id);
+        if (resource.getResourceType() != ResourceType.FILE) {
+            throw new BadRequestException("Resource is not a file");
+        }
+        if (isBlank(resource.getFileUrl())) {
+            throw new BadRequestException("File URL is missing");
+        }
+
+        StorageFile storageFile = storageService.download(resource.getFileUrl());
+        String mimeType = resolveResponseMimeType(resource.getMimeType(), storageFile.mimeType(), resource.getFileName());
+        return new ResourceFileContent(
+            resource.getId(),
+            resource.getFileName(),
+            mimeType,
+            storageFile.content()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentPreviewResponse documentPreview(UUID id) {
+        Resource resource = getResource(id);
+        if (resource.getResourceType() != ResourceType.FILE) {
+            throw new BadRequestException("Resource is not a file");
+        }
+
+        String extension = extensionOf(resource.getFileName());
+        if (!extension.equals("docx")) {
+            return new DocumentPreviewResponse(
+                resource.getId(),
+                resource.getTitle(),
+                resource.getFileName(),
+                resource.getMimeType(),
+                "",
+                0,
+                false,
+                extension.equals("doc")
+                    ? "Legacy .doc files cannot be rendered inline yet. Convert it to .docx for live preview."
+                    : "Document preview is available for .docx files"
+            );
+        }
+
+        ResourceFileContent file = fileContent(id);
+        List<String> paragraphs = extractDocxParagraphs(file.content());
+        String plainText = String.join("\n\n", paragraphs);
+
+        return new DocumentPreviewResponse(
+            resource.getId(),
+            resource.getTitle(),
+            resource.getFileName(),
+            file.mimeType(),
+            plainText,
+            paragraphs.size(),
+            true,
+            plainText.isBlank() ? "The DOCX file did not contain readable body text" : null
         );
     }
 
@@ -287,6 +456,14 @@ public class ResourceService {
             resource.getCodeLanguage(),
             resource.getSourceName(),
             resource.getThumbnailUrl(),
+            resource.getPreviewTitle(),
+            resource.getPreviewDescription(),
+            resource.getFaviconUrl(),
+            resource.getSiteName(),
+            resource.getCanonicalUrl(),
+            resource.getPreviewFetchedAt(),
+            resource.getPreviewStatus(),
+            resource.getPreviewError(),
             resource.getIsFavorite(),
             resource.getIsArchived(),
             tagsByResourceId.getOrDefault(resource.getId(), List.of()),
@@ -333,6 +510,7 @@ public class ResourceService {
 
         Resource resource = new Resource();
         applyRequest(resource, request, vault, folder);
+        refreshPreviewIfNeeded(resource, null, false);
         return toResponse(resourceRepository.save(resource));
     }
 
@@ -369,11 +547,14 @@ public class ResourceService {
         resource.setTitle(request.title().trim());
         resource.setDescription(trimToNull(request.description()));
         resource.setResourceType(request.resourceType());
-        resource.setUrl(request.resourceType() == ResourceType.LINK ? trimToNull(request.url()) : null);
+        resource.setUrl(request.resourceType() == ResourceType.LINK ? normalizeUrl(request.url()) : null);
         resource.setContent(usesContent(request.resourceType()) ? trimToNull(request.content()) : null);
         resource.setCodeLanguage(request.resourceType() == ResourceType.SNIPPET ? trimToNull(request.codeLanguage()) : null);
         resource.setSourceName(request.resourceType() == ResourceType.LINK ? trimToNull(request.sourceName()) : null);
         resource.setThumbnailUrl(request.resourceType() == ResourceType.LINK ? trimToNull(request.thumbnailUrl()) : null);
+        if (request.resourceType() != ResourceType.LINK) {
+            clearLinkPreviewFields(resource);
+        }
     }
 
     private void validateRequest(ResourceRequest request) {
@@ -407,6 +588,20 @@ public class ResourceService {
         }
     }
 
+    private String normalizeUrl(String value) {
+        String url = trimToNull(value);
+        if (url == null) {
+            return null;
+        }
+
+        String lower = url.toLowerCase(Locale.ROOT);
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            url = "https://" + url;
+        }
+
+        return url;
+    }
+
     private boolean usesContent(ResourceType type) {
         return type == ResourceType.NOTE || type == ResourceType.SNIPPET;
     }
@@ -435,18 +630,92 @@ public class ResourceService {
         resource.setStorageKey(null);
     }
 
+    private void refreshPreviewIfNeeded(Resource resource, String previousUrl, boolean force) {
+        if (resource.getResourceType() != ResourceType.LINK) {
+            return;
+        }
+
+        boolean urlChanged = previousUrl == null || !previousUrl.equals(resource.getUrl());
+        if (!force && !urlChanged && isRecentPreview(resource)) {
+            return;
+        }
+
+        applyLinkPreview(resource, force, urlChanged);
+    }
+
+    private boolean isRecentPreview(Resource resource) {
+        Instant fetchedAt = resource.getPreviewFetchedAt();
+        return fetchedAt != null && fetchedAt.plus(Duration.ofMinutes(30)).isAfter(Instant.now());
+    }
+
+    private void applyLinkPreview(Resource resource, boolean force, boolean clearOnFailure) {
+        LinkPreviewResponse preview = linkPreviewService.fetch(resource.getUrl(), force);
+        resource.setPreviewFetchedAt(preview.previewFetchedAt());
+        resource.setPreviewStatus(preview.previewStatus());
+        resource.setPreviewError(preview.previewError());
+
+        if (preview.successful()) {
+            resource.setPreviewTitle(trimToNull(preview.previewTitle()));
+            resource.setPreviewDescription(trimToNull(preview.previewDescription()));
+            resource.setFaviconUrl(trimToNull(preview.faviconUrl()));
+            resource.setSiteName(trimToNull(preview.siteName()));
+            resource.setCanonicalUrl(trimToNull(preview.canonicalUrl()));
+            resource.setSourceName(firstNonBlank(preview.sourceName(), preview.domain(), resource.getSourceName()));
+            resource.setThumbnailUrl(trimToNull(preview.thumbnailUrl()));
+            return;
+        }
+
+        if (clearOnFailure) {
+            resource.setPreviewTitle(null);
+            resource.setPreviewDescription(null);
+            resource.setFaviconUrl(null);
+            resource.setSiteName(null);
+            resource.setCanonicalUrl(resource.getUrl());
+            resource.setThumbnailUrl(null);
+        }
+
+        if (isBlank(resource.getSourceName())) {
+            resource.setSourceName(trimToNull(firstNonBlank(preview.domain(), linkPreviewService.displayDomain(resource.getUrl()))));
+        }
+    }
+
+    private void clearLinkPreviewFields(Resource resource) {
+        resource.setPreviewTitle(null);
+        resource.setPreviewDescription(null);
+        resource.setFaviconUrl(null);
+        resource.setSiteName(null);
+        resource.setCanonicalUrl(null);
+        resource.setPreviewFetchedAt(null);
+        resource.setPreviewStatus(null);
+        resource.setPreviewError(null);
+    }
+
     private boolean isPreviewSupported(String mimeType, String fileName) {
         String mime = mimeType == null ? "" : mimeType.toLowerCase(Locale.ROOT);
-        if (mime.startsWith("image/") || mime.startsWith("text/")) {
-            return true;
-        }
-
-        if (mime.equals("application/pdf") || mime.equals("application/json")) {
-            return true;
-        }
-
         String extension = extensionOf(fileName);
-        return List.of("txt", "md", "json", "java", "ts", "js", "html", "css").contains(extension);
+
+        if (mime.startsWith("image/") || imageExtensions().contains(extension)) {
+            return true;
+        }
+
+        if (mime.startsWith("text/") || textPreviewExtensions().contains(extension)) {
+            return true;
+        }
+
+        return mime.equals("application/pdf") || mime.equals("application/json") || extension.equals("pdf") || extension.equals("docx");
+    }
+
+    private List<String> imageExtensions() {
+        return List.of("jpg", "jpeg", "png", "webp", "gif", "svg");
+    }
+
+    private List<String> textPreviewExtensions() {
+        return List.of(
+            "txt", "md", "csv", "json", "xml", "yaml", "yml", "log",
+            "java", "kt", "py", "ts", "tsx", "js", "jsx", "html", "css", "scss",
+            "sql", "sh", "ps1", "c", "cpp", "h", "hpp", "cs", "go", "rs", "php",
+            "rb", "swift", "dart"
+        );
     }
 
     private String extensionOf(String fileName) {
@@ -460,5 +729,112 @@ public class ResourceService {
         }
 
         return fileName.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private String resolveResponseMimeType(String resourceMimeType, String storageMimeType, String fileName) {
+        String mime = firstNonBlank(resourceMimeType, storageMimeType);
+        if (!isBlank(mime) && !"application/octet-stream".equalsIgnoreCase(mime)) {
+            return mime.toLowerCase(Locale.ROOT);
+        }
+
+        return switch (extensionOf(fileName)) {
+            case "pdf" -> "application/pdf";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "doc" -> "application/msword";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "xls" -> "application/vnd.ms-excel";
+            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "ppt" -> "application/vnd.ms-powerpoint";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "webp" -> "image/webp";
+            case "gif" -> "image/gif";
+            case "svg" -> "image/svg+xml";
+            case "csv" -> "text/csv";
+            case "json" -> "application/json";
+            case "xml" -> "application/xml";
+            default -> "application/octet-stream";
+        };
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return isBlank(first) ? trimToNull(second) : first.trim();
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private List<String> extractDocxParagraphs(byte[] content) {
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(content))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if ("word/document.xml".equals(entry.getName())) {
+                    return parseDocxDocumentXml(zip);
+                }
+            }
+        } catch (java.io.IOException | XMLStreamException exception) {
+            throw new BadRequestException("Could not render DOCX preview");
+        }
+
+        throw new BadRequestException("DOCX document body was not found");
+    }
+
+    private List<String> parseDocxDocumentXml(ZipInputStream zip) throws XMLStreamException {
+        XMLInputFactory factory = XMLInputFactory.newFactory();
+        setXmlProperty(factory, XMLInputFactory.SUPPORT_DTD, false);
+        setXmlProperty(factory, "javax.xml.stream.isSupportingExternalEntities", false);
+
+        XMLStreamReader reader = factory.createXMLStreamReader(zip);
+        List<String> paragraphs = new ArrayList<>();
+        StringBuilder currentParagraph = new StringBuilder();
+        boolean inParagraph = false;
+        boolean inText = false;
+
+        while (reader.hasNext()) {
+            int event = reader.next();
+            if (event == XMLStreamConstants.START_ELEMENT) {
+                String name = reader.getLocalName();
+                if ("p".equals(name)) {
+                    inParagraph = true;
+                    currentParagraph.setLength(0);
+                } else if ("t".equals(name)) {
+                    inText = true;
+                } else if (inParagraph && "tab".equals(name)) {
+                    currentParagraph.append('\t');
+                } else if (inParagraph && "br".equals(name)) {
+                    currentParagraph.append('\n');
+                }
+            } else if (event == XMLStreamConstants.CHARACTERS && inParagraph && inText) {
+                currentParagraph.append(reader.getText());
+            } else if (event == XMLStreamConstants.END_ELEMENT) {
+                String name = reader.getLocalName();
+                if ("t".equals(name)) {
+                    inText = false;
+                } else if ("p".equals(name)) {
+                    String paragraph = currentParagraph.toString().trim();
+                    if (!paragraph.isBlank()) {
+                        paragraphs.add(paragraph);
+                    }
+                    inParagraph = false;
+                    inText = false;
+                }
+            }
+        }
+
+        return paragraphs;
+    }
+
+    private void setXmlProperty(XMLInputFactory factory, String property, boolean value) {
+        try {
+            factory.setProperty(property, value);
+        } catch (IllegalArgumentException ignored) {
+            // Some XML providers do not expose every hardening flag.
+        }
     }
 }

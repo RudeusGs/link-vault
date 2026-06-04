@@ -72,6 +72,12 @@ export class ApiService {
       );
   }
 
+  download(path: string): Observable<Blob> {
+    return this.http
+      .get(`${this.baseUrl}${path}`, { responseType: 'blob' })
+      .pipe(catchError((error) => this.handleError(error)));
+  }
+
   private unwrap<T>(response: ApiResponse<T>): T {
     if (!response.success) {
       throw new Error(response.message || 'Request failed');
@@ -98,8 +104,11 @@ export class ApiService {
   private handleError(error: unknown): Observable<never> {
     if (error instanceof HttpErrorResponse) {
       const payload = error.error as { message?: string; errors?: unknown } | string | null;
-      if (typeof payload === 'object' && payload?.message) {
-        return throwError(() => new Error(payload.message));
+      if (payload && typeof payload === 'object') {
+        const message = typeof payload.message === 'string' ? payload.message : '';
+        if (message) {
+          return throwError(() => new Error(this.composePayloadMessage(message, payload.errors)));
+        }
       }
 
       if (error.status === 0) {
@@ -131,4 +140,20 @@ export class ApiService {
 
     return throwError(() => (error instanceof Error ? error : new Error('Có lỗi không xác định')));
   }
+
+  private composePayloadMessage(message: string, errors: unknown): string {
+    const details = this.formatValidationErrors(errors);
+    return details ? `${message}: ${details}` : message;
+  }
+
+  private formatValidationErrors(errors: unknown): string {
+    if (!errors || typeof errors !== 'object' || Array.isArray(errors)) {
+      return '';
+    }
+
+    return Object.entries(errors as Record<string, unknown>)
+      .map(([field, value]) => `${field} ${String(value)}`)
+      .join('; ');
+  }
 }
+

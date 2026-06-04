@@ -17,7 +17,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 20MB
-      max-request-size: 25MB
+      max-request-size: 20MB
 
 server:
   port: 8080
@@ -29,9 +29,7 @@ app:
     secret: ${APP_JWT_SECRET:dev-only-change-this-secret-before-production-please-32-chars}
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:120}
   cors:
-    allowed-origins:
-      - http://localhost:4200
-      - http://127.0.0.1:4200
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}
@@ -40,7 +38,7 @@ cloudinary:
   folder: ${CLOUDINARY_FOLDER:link-vault}
   use-secure-url: ${CLOUDINARY_USE_SECURE_URL:true}
   max-file-size-mb: ${CLOUDINARY_MAX_FILE_SIZE_MB:20}
-  allowed-formats: ${CLOUDINARY_ALLOWED_FORMATS:jpg,jpeg,png,webp,gif,pdf,txt,md,json,java,ts,js,html,css}
+  allowed-formats: ${CLOUDINARY_ALLOWED_FORMATS:jpg,jpeg,png,webp,gif,svg,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,md,csv,json,xml,yaml,yml,log,java,kt,py,ts,tsx,js,jsx,html,css,scss,sql,sh,ps1,c,cpp,h,hpp,cs,go,rs,php,rb,swift,dart,zip,rar,7z,mp3,wav,mp4,webm,mov}
 
 springdoc:
   api-docs:
@@ -50,3 +48,4 @@ springdoc:
     display-request-duration: true
     operations-sorter: method
     tags-sorter: alpha
+

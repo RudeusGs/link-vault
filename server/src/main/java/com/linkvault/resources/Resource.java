@@ -8,18 +8,29 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.time.Instant;
 
 @Getter
 @Setter
 @Entity
 @NoArgsConstructor
-@Table(name = "resources")
+@Table(
+    name = "resources",
+    indexes = {
+        @Index(name = "idx_resources_vault", columnList = "vault_id"),
+        @Index(name = "idx_resources_folder", columnList = "folder_id"),
+        @Index(name = "idx_resources_type", columnList = "resource_type"),
+        @Index(name = "idx_resources_favorite", columnList = "is_favorite"),
+        @Index(name = "idx_resources_created_at", columnList = "created_at")
+    }
+)
 public class Resource extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -71,6 +82,29 @@ public class Resource extends BaseEntity {
 
     @Column(length = 2000)
     private String thumbnailUrl;
+
+    @Column(length = 500)
+    private String previewTitle;
+
+    @Column(length = 1000)
+    private String previewDescription;
+
+    @Column(length = 2000)
+    private String faviconUrl;
+
+    @Column(length = 255)
+    private String siteName;
+
+    @Column(length = 2000)
+    private String canonicalUrl;
+
+    private Instant previewFetchedAt;
+
+    @Column(length = 40)
+    private String previewStatus;
+
+    @Column(length = 1000)
+    private String previewError;
 
     @Column(nullable = false)
     private Boolean isFavorite = false;

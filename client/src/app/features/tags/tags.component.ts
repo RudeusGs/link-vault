@@ -11,8 +11,8 @@ import { TagService } from '../../core/services/tag.service';
   imports: [CommonModule, FormsModule],
   template: `
     <section>
-      <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
-        <div>
+      <div class="lv-page-header mb-4">
+        <div class="lv-page-header-copy">
           <h1 class="lv-page-title">Tags</h1>
           <p class="lv-muted fs-6 mb-0">Organize resources by labels.</p>
         </div>
@@ -31,7 +31,7 @@ import { TagService } from '../../core/services/tag.service';
           <div class="col-sm-6 col-lg-4 col-xl-3" *ngFor="let tag of tags">
             <article class="lv-card lv-card-hover p-4 h-100">
               <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                <div class="d-flex align-items-center gap-3 min-w-0">
+                <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
                   <span class="rounded-circle d-inline-block" style="width:12px;height:12px" [style.background]="tag.color || '#003d9b'"></span>
                   <h2 class="lv-section-title fs-5 text-truncate mb-0">{{ tag.name }}</h2>
                 </div>
@@ -80,7 +80,7 @@ import { TagService } from '../../core/services/tag.service';
             <label class="form-label fw-semibold">Color</label>
             <input class="form-control form-control-color w-100" name="tagColor" type="color" [(ngModel)]="form.color" />
           </div>
-          <div class="col-12 d-flex justify-content-end gap-2">
+          <div class="col-12 lv-form-actions">
             <button class="btn btn-outline-secondary" type="button" (click)="closeModal()">Cancel</button>
             <button class="btn btn-primary" type="submit" [disabled]="saving">
               <span *ngIf="saving" class="spinner-border spinner-border-sm me-2"></span>

@@ -22,6 +22,14 @@ export interface Resource {
   codeLanguage?: string | null;
   sourceName?: string | null;
   thumbnailUrl?: string | null;
+  previewTitle?: string | null;
+  previewDescription?: string | null;
+  faviconUrl?: string | null;
+  siteName?: string | null;
+  canonicalUrl?: string | null;
+  previewFetchedAt?: string | null;
+  previewStatus?: string | null;
+  previewError?: string | null;
   isFavorite: boolean;
   isArchived: boolean;
   tags: Tag[];
@@ -50,6 +58,10 @@ export interface ResourceSearchParams {
   favorite?: boolean;
 }
 
+export interface LinkPreviewRequest {
+  url: string;
+}
+
 export interface ResourcePreview {
   id: string;
   resourceType: ResourceType;
@@ -57,6 +69,33 @@ export interface ResourcePreview {
   previewUrl?: string | null;
   mimeType?: string | null;
   fileName?: string | null;
+  supported: boolean;
+  reason?: string | null;
+}
+
+export interface LinkPreview {
+  requestedUrl?: string | null;
+  url?: string | null;
+  sourceName?: string | null;
+  domain?: string | null;
+  thumbnailUrl?: string | null;
+  previewTitle?: string | null;
+  previewDescription?: string | null;
+  faviconUrl?: string | null;
+  siteName?: string | null;
+  canonicalUrl?: string | null;
+  previewFetchedAt?: string | null;
+  previewStatus?: string | null;
+  previewError?: string | null;
+}
+
+export interface DocumentPreview {
+  id: string;
+  title: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  plainText: string;
+  paragraphCount: number;
   supported: boolean;
   reason?: string | null;
 }

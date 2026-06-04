@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { ApiService } from './core/services/api.service';
@@ -10,7 +11,7 @@ type HealthState = 'checking' | 'online' | 'offline';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -18,6 +19,7 @@ export class App implements OnInit {
   protected readonly auth = inject(AuthService);
   protected readonly healthState = signal<HealthState>('checking');
   protected readonly healthMessage = signal('Checking API');
+  protected globalKeyword = '';
 
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
@@ -33,6 +35,13 @@ export class App implements OnInit {
   protected logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);
+  }
+
+  protected runGlobalSearch(): void {
+    const keyword = this.globalKeyword.trim();
+    this.router.navigate(['/resources'], {
+      queryParams: keyword ? { q: keyword } : undefined
+    });
   }
 
   get userInitial(): string {

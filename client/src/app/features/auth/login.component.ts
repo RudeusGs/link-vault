@@ -42,14 +42,6 @@ import { AuthService } from '../../core/services/auth.service';
             </div>
           </div>
 
-          <div class="d-flex align-items-center justify-content-between small">
-            <label class="form-check-label d-flex align-items-center gap-2">
-              <input class="form-check-input m-0" type="checkbox" />
-              Remember me
-            </label>
-            <a class="lv-primary fw-semibold" href="javascript:void(0)">Forgot password?</a>
-          </div>
-
           <button class="btn btn-primary py-2 fw-semibold" type="submit" [disabled]="loading">
             <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
             Sign in
@@ -92,3 +84,5 @@ export class LoginComponent {
     });
   }
 }
+
+

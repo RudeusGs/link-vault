@@ -4,7 +4,11 @@ import com.linkvault.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,9 +24,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class ResourceController {
 
     private final ResourceService resourceService;
+    private final LinkPreviewService linkPreviewService;
 
-    public ResourceController(ResourceService resourceService) {
+    public ResourceController(ResourceService resourceService, LinkPreviewService linkPreviewService) {
         this.resourceService = resourceService;
+        this.linkPreviewService = linkPreviewService;
     }
 
     @GetMapping("/api/resources")
@@ -59,6 +65,11 @@ public class ResourceController {
     @GetMapping("/api/resources/{id}")
     public ApiResponse<ResourceResponse> get(@PathVariable UUID id) {
         return ApiResponse.success("Resource loaded", resourceService.getResourceResponse(id));
+    }
+
+    @PostMapping("/api/link-preview")
+    public ApiResponse<LinkPreviewResponse> linkPreview(@Valid @RequestBody LinkPreviewRequest request) {
+        return ApiResponse.success("Link preview loaded", linkPreviewService.fetch(request.url()));
     }
 
     @PostMapping("/api/vaults/{vaultId}/resources")
@@ -98,6 +109,11 @@ public class ResourceController {
         return ApiResponse.success("Archive updated", resourceService.toggleArchive(id));
     }
 
+    @PatchMapping("/api/resources/{id}/refresh-preview")
+    public ApiResponse<ResourceResponse> refreshPreview(@PathVariable UUID id) {
+        return ApiResponse.success("Link preview refreshed", resourceService.refreshLinkPreview(id));
+    }
+
     @PostMapping("/api/resources/{id}/view")
     public ApiResponse<ResourceResponse> view(@PathVariable UUID id) {
         return ApiResponse.success("Resource view recorded", resourceService.recordView(id));
@@ -132,6 +148,26 @@ public class ResourceController {
     @GetMapping("/api/resources/{id}/preview")
     public ApiResponse<ResourcePreviewResponse> preview(@PathVariable UUID id) {
         return ApiResponse.success("Resource preview loaded", resourceService.preview(id));
+    }
+
+    @GetMapping("/api/resources/{id}/file")
+    public ResponseEntity<byte[]> file(@PathVariable UUID id) {
+        ResourceFileContent file = resourceService.fileContent(id);
+        MediaType mediaType = MediaType.parseMediaType(file.mimeType());
+        ContentDisposition disposition = ContentDisposition.inline()
+            .filename(file.fileName() == null ? "resource-file" : file.fileName())
+            .build();
+
+        return ResponseEntity.ok()
+            .contentType(mediaType)
+            .cacheControl(CacheControl.noStore())
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .body(file.content());
+    }
+
+    @GetMapping("/api/resources/{id}/document-preview")
+    public ApiResponse<DocumentPreviewResponse> documentPreview(@PathVariable UUID id) {
+        return ApiResponse.success("Document preview loaded", resourceService.documentPreview(id));
     }
 
     @PostMapping("/api/resources/{resourceId}/tags/{tagId}")

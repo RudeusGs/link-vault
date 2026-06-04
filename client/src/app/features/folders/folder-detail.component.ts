@@ -15,20 +15,20 @@ import { ResourceListComponent } from '../resources/resource-list.component';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, ResourceFormComponent, ResourceListComponent],
   template: `
-    <section *ngIf="folder; else loadingTpl">
-      <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
-        <div>
+    <section *ngIf="!loading && folder; else loadingTpl">
+      <div class="lv-page-header mb-4">
+        <div class="lv-page-header-copy">
           <a [routerLink]="['/vaults', folder.vaultId]" class="d-inline-flex align-items-center gap-2 lv-primary fw-semibold mb-2">
             <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span>
             Back to vault
           </a>
           <div class="d-flex align-items-center gap-3 flex-wrap">
-            <h1 class="lv-page-title">{{ folder.name }}</h1>
+            <h1 class="lv-page-title lv-break-title">{{ folder.name }}</h1>
             <span class="badge rounded-pill lv-badge-secondary px-3 py-2">Folder</span>
           </div>
-          <p class="lv-muted mb-0 mt-1">{{ folder.description || 'No description' }}</p>
+          <p class="lv-muted mb-0 mt-1 lv-line-clamp-3 text-break">{{ folder.description || 'No description' }}</p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="lv-action-toolbar">
           <button class="btn btn-outline-primary" type="button" (click)="openEditFolder()"><span class="material-symbols-outlined me-1" style="font-size:18px">edit</span>Edit</button>
           <button class="btn btn-outline-danger" type="button" (click)="deleteFolder()"><span class="material-symbols-outlined me-1" style="font-size:18px">delete</span>Delete</button>
         </div>
@@ -47,26 +47,28 @@ import { ResourceListComponent } from '../resources/resource-list.component';
             <div *ngIf="children.length === 0" class="lv-empty-state py-4">No child folders.</div>
 
             <div class="d-grid gap-2">
-              <a *ngFor="let child of children" class="lv-soft-panel p-3 d-flex align-items-center gap-3 text-dark" [routerLink]="['/folders', child.id]">
-                <span class="lv-icon-box"><span class="material-symbols-outlined">folder</span></span>
-                <span class="min-w-0 flex-grow-1">
-                  <strong class="d-block text-truncate">{{ child.name }}</strong>
-                  <small class="lv-muted d-block text-truncate">{{ child.description || 'No description' }}</small>
-                </span>
-                <button class="btn btn-sm btn-outline-danger" type="button" (click)="deleteChild(child, $event)"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button>
-              </a>
+              <div *ngFor="let child of children" class="lv-soft-panel p-3 d-flex align-items-center gap-3 text-dark min-w-0">
+                <a class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 text-dark" [routerLink]="['/folders', child.id]">
+                  <span class="lv-icon-box"><span class="material-symbols-outlined">folder</span></span>
+                  <span class="min-w-0 flex-grow-1">
+                    <strong class="d-block text-truncate">{{ child.name }}</strong>
+                    <small class="lv-muted d-block text-truncate">{{ child.description || 'No description' }}</small>
+                  </span>
+                </a>
+                <button class="btn btn-sm btn-outline-danger flex-shrink-0" type="button" (click)="deleteChild(child, $event)"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button>
+              </div>
             </div>
           </article>
         </div>
 
         <div class="col-xl-8">
           <article class="lv-card p-4">
-            <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3 mb-4">
-              <div>
+            <div class="lv-section-toolbar mb-4">
+              <div class="min-w-0">
                 <h2 class="lv-section-title mb-1">Folder resources</h2>
                 <p class="lv-muted mb-0">Create and manage content in this folder.</p>
               </div>
-              <div class="d-flex flex-wrap gap-2">
+              <div class="lv-action-toolbar compact">
                 <button class="btn btn-outline-primary" type="button" (click)="openResource('LINK')">New Link</button>
                 <button class="btn btn-outline-primary" type="button" (click)="openResource('NOTE')">New Note</button>
                 <button class="btn btn-outline-primary" type="button" (click)="openResource('SNIPPET')">New Snippet</button>
@@ -91,13 +93,14 @@ import { ResourceListComponent } from '../resources/resource-list.component';
           <div class="col-md-8"><label class="form-label fw-semibold">Name</label><input class="form-control" name="folderName" required [(ngModel)]="folderForm.name" /></div>
           <div class="col-md-4"><label class="form-label fw-semibold">Sort order</label><input class="form-control" name="sortOrder" type="number" [(ngModel)]="folderForm.sortOrder" /></div>
           <div class="col-12"><label class="form-label fw-semibold">Description</label><textarea class="form-control" name="folderDescription" rows="3" [(ngModel)]="folderForm.description"></textarea></div>
-          <div class="col-12 d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary" type="button" (click)="closeFolderModal()">Cancel</button><button class="btn btn-primary" type="submit" [disabled]="savingFolder">Save folder</button></div>
+          <div class="col-12 lv-form-actions"><button class="btn btn-outline-secondary" type="button" (click)="closeFolderModal()">Cancel</button><button class="btn btn-primary" type="submit" [disabled]="savingFolder">Save folder</button></div>
         </form>
       </section>
     </div>
 
     <ng-template #loadingTpl>
-      <div class="lv-card p-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading folder...</div>
+      <div *ngIf="loading" class="lv-card p-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading folder...</div>
+      <div *ngIf="!loading && error" class="alert alert-danger">{{ error }}</div>
     </ng-template>
   `
 })
@@ -106,6 +109,7 @@ export class FolderDetailComponent implements OnInit {
   @ViewChild('resourceForm') resourceForm!: ResourceFormComponent;
 
   protected folder?: Folder;
+  protected loading = true;
   protected children: Folder[] = [];
   protected error = '';
   protected folderModalOpen = false;
@@ -130,17 +134,20 @@ export class FolderDetailComponent implements OnInit {
     if (!folderId) return;
 
     const requestId = ++this.loadRequestId;
+    this.loading = true;
     this.error = '';
 
     this.folderService.get(folderId).subscribe({
       next: (folder) => {
         if (requestId === this.loadRequestId) {
           this.folder = folder;
+          this.loading = false;
         }
       },
       error: (error) => {
         if (requestId === this.loadRequestId) {
           this.error = error instanceof Error ? error.message : 'Could not load folder';
+          this.loading = false;
         }
       }
     });

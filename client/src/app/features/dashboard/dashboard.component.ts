@@ -11,8 +11,8 @@ import { DashboardService } from '../../core/services/dashboard.service';
   imports: [CommonModule, RouterLink],
   template: `
     <section>
-      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-        <div>
+      <div class="lv-page-header mb-4">
+        <div class="lv-page-header-copy">
           <h1 class="lv-page-title">Dashboard</h1>
           <p class="lv-muted fs-6 mb-0">Welcome back, manage your personal resource hub.</p>
         </div>
@@ -24,7 +24,7 @@ import { DashboardService } from '../../core/services/dashboard.service';
 
       <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
-      <ng-container *ngIf="summary; else loadingTpl">
+      <ng-container *ngIf="!loading && summary">
         <section class="row g-3 mb-4">
           <div class="col-6 col-md-4 col-xl-3" *ngFor="let item of metrics">
             <article class="lv-card lv-card-hover p-4 h-100">
@@ -43,8 +43,8 @@ import { DashboardService } from '../../core/services/dashboard.service';
         <section class="row g-4">
           <div class="col-xl-8">
             <article class="lv-card p-4 h-100">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
+              <div class="lv-section-toolbar mb-3">
+                <div class="min-w-0">
                   <h2 class="lv-section-title mb-1">Recent resources</h2>
                   <p class="lv-muted mb-0">Latest links, notes, files and snippets.</p>
                 </div>
@@ -64,8 +64,8 @@ import { DashboardService } from '../../core/services/dashboard.service';
                     </span>
                     <div class="min-w-0 flex-grow-1">
                       <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <strong class="text-truncate">{{ resource.title }}</strong>
-                        <span class="badge rounded-pill lv-badge-soft">{{ resource.resourceType }}</span>
+                        <strong class="text-truncate min-w-0">{{ resource.title }}</strong>
+                        <span class="badge rounded-pill lv-badge-soft lv-chip flex-shrink-0">{{ resource.resourceType }}</span>
                       </div>
                       <small class="lv-muted text-truncate d-block">
                         {{ resource.vaultName || 'Vault' }} <span *ngIf="resource.folderName">/ {{ resource.folderName }}</span>
@@ -80,8 +80,8 @@ import { DashboardService } from '../../core/services/dashboard.service';
 
           <div class="col-xl-4">
             <article class="lv-card p-4 h-100">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
+              <div class="lv-section-toolbar mb-3">
+                <div class="min-w-0">
                   <h2 class="lv-section-title mb-1">Top tags</h2>
                   <p class="lv-muted mb-0">Most used labels.</p>
                 </div>
@@ -94,9 +94,9 @@ import { DashboardService } from '../../core/services/dashboard.service';
               </div>
 
               <div class="d-flex flex-wrap gap-2">
-                <span *ngFor="let tag of summary.topTags" class="badge rounded-pill text-bg-light border px-3 py-2">
+                <span *ngFor="let tag of summary.topTags" class="badge rounded-pill text-bg-light border px-3 py-2 lv-chip">
                   <span class="material-symbols-outlined me-1" style="font-size:14px">sell</span>
-                  {{ tag.name }} · {{ tag.usageCount }}
+                  <span class="lv-chip-label">{{ tag.name }} · {{ tag.usageCount }}</span>
                 </span>
               </div>
             </article>
@@ -104,17 +104,16 @@ import { DashboardService } from '../../core/services/dashboard.service';
         </section>
       </ng-container>
 
-      <ng-template #loadingTpl>
-        <div class="lv-card p-4">
-          <span class="spinner-border spinner-border-sm me-2"></span>
-          Loading dashboard...
-        </div>
-      </ng-template>
+      <div *ngIf="loading" class="lv-card p-4">
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Loading dashboard...
+      </div>
     </section>
   `
 })
 export class DashboardComponent implements OnInit {
   protected summary?: DashboardSummary;
+  protected loading = true;
   protected error = '';
 
   private readonly dashboardService = inject(DashboardService);
@@ -137,9 +136,18 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loading = true;
+    this.error = '';
+
     this.dashboardService.getSummary().subscribe({
-      next: (summary) => (this.summary = summary),
-      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not load dashboard')
+      next: (summary) => {
+        this.summary = summary;
+        this.loading = false;
+      },
+      error: (error) => {
+        this.error = error instanceof Error ? error.message : 'Could not load dashboard';
+        this.loading = false;
+      }
     });
   }
 

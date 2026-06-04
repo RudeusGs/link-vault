@@ -2,6 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
+  DocumentPreview,
+  LinkPreview,
+  LinkPreviewRequest,
   Resource,
   ResourcePreview,
   ResourceRequest,
@@ -47,6 +50,15 @@ export class ResourceService {
     return this.api.put<Resource>(`/resources/${id}`, request);
   }
 
+  fetchLinkPreview(url: string): Observable<LinkPreview> {
+    const request: LinkPreviewRequest = { url };
+    return this.api.post<LinkPreview>('/link-preview', request);
+  }
+
+  refreshLinkPreview(id: string): Observable<Resource> {
+    return this.api.patch<Resource>(`/resources/${id}/refresh-preview`);
+  }
+
   delete(id: string): Observable<void> {
     return this.api.delete<void>(`/resources/${id}`);
   }
@@ -73,6 +85,14 @@ export class ResourceService {
 
   preview(id: string): Observable<ResourcePreview> {
     return this.api.get<ResourcePreview>(`/resources/${id}/preview`);
+  }
+
+  downloadFile(id: string): Observable<Blob> {
+    return this.api.download(`/resources/${id}/file`);
+  }
+
+  documentPreview(id: string): Observable<DocumentPreview> {
+    return this.api.get<DocumentPreview>(`/resources/${id}/document-preview`);
   }
 
   attachTag(resourceId: string, tagId: string): Observable<Resource> {

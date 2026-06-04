@@ -18,7 +18,7 @@ public class CloudinaryProperties {
     private String folder = "link-vault";
     private boolean useSecureUrl = true;
     private long maxFileSizeMb = 20;
-    private String allowedFormats = "jpg,jpeg,png,webp,gif,pdf,txt,md,json,java,ts,js,html,css";
+    private String allowedFormats = "jpg,jpeg,png,webp,gif,svg,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,md,csv,json,xml,yaml,yml,log,java,kt,py,ts,tsx,js,jsx,html,css,scss,sql,sh,ps1,c,cpp,h,hpp,cs,go,rs,php,rb,swift,dart,zip,rar,7z,mp3,wav,mp4,webm,mov";
 
     public Set<String> allowedFormatSet() {
         return Arrays.stream(allowedFormats.split(","))

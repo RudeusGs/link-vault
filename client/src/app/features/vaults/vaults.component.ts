@@ -5,15 +5,16 @@ import { RouterLink } from '@angular/router';
 
 import { Vault, VaultRequest } from '../../core/models/vault.model';
 import { VaultService } from '../../core/services/vault.service';
+import { VaultIconPickerComponent } from './vault-icon-picker.component';
 
 @Component({
   selector: 'app-vaults',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, VaultIconPickerComponent],
   template: `
     <section>
-      <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
-        <div>
+      <div class="lv-page-header mb-4">
+        <div class="lv-page-header-copy">
           <h1 class="lv-page-title">Vaults</h1>
           <p class="lv-muted fs-6 mb-0">Manage your personal collections.</p>
         </div>
@@ -28,7 +29,7 @@ import { VaultService } from '../../core/services/vault.service';
       <ng-container *ngIf="vaults.length > 0; else emptyTpl">
         <div class="row g-4">
           <div class="col-md-6 col-xl-4" *ngFor="let vault of vaults">
-            <article class="lv-card lv-card-hover p-4 h-100 position-relative">
+            <article class="lv-card lv-card-hover p-4 h-100 position-relative lv-stack-card">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <a class="d-flex align-items-start gap-3 flex-grow-1 min-w-0 text-dark" [routerLink]="['/vaults', vault.id]">
                   <span class="lv-icon-box lv-icon-box-lg" [style.color]="vault.color || null">
@@ -54,8 +55,8 @@ import { VaultService } from '../../core/services/vault.service';
 
               <p class="lv-muted lv-line-clamp-2 mb-4">{{ vault.description || 'A clean collection for organizing folders, links, notes, files and code snippets.' }}</p>
 
-              <div class="d-flex align-items-center justify-content-between pt-3 border-top">
-                <small class="lv-muted">Updated {{ vault.updatedAt | date:'mediumDate' }}</small>
+              <div class="lv-card-footer mt-auto pt-3 border-top">
+                <small class="lv-muted text-truncate">Updated {{ vault.updatedAt | date:'mediumDate' }}</small>
                 <a class="btn btn-sm btn-outline-primary" [routerLink]="['/vaults', vault.id]">
                   Open
                   <span class="material-symbols-outlined ms-1" style="font-size:16px">arrow_forward</span>
@@ -94,23 +95,23 @@ import { VaultService } from '../../core/services/vault.service';
         </div>
 
         <form class="row g-3" (ngSubmit)="save()">
-          <div class="col-md-6">
+          <div class="col-md-8">
             <label class="form-label fw-semibold">Name</label>
             <input class="form-control" name="name" required [(ngModel)]="form.name" />
           </div>
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Icon</label>
-            <input class="form-control" name="icon" placeholder="work" [(ngModel)]="form.icon" />
-          </div>
-          <div class="col-md-3">
+          <div class="col-md-4">
             <label class="form-label fw-semibold">Color</label>
             <input class="form-control form-control-color w-100" name="color" type="color" [(ngModel)]="form.color" />
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Icon</label>
+            <app-vault-icon-picker [selectedIcon]="form.icon" (selectedIconChange)="form.icon = $event" />
           </div>
           <div class="col-12">
             <label class="form-label fw-semibold">Description</label>
             <textarea class="form-control" name="description" rows="4" [(ngModel)]="form.description"></textarea>
           </div>
-          <div class="col-12 d-flex gap-2 justify-content-end">
+          <div class="col-12 lv-form-actions">
             <button class="btn btn-outline-secondary" type="button" (click)="closeForm()">Cancel</button>
             <button class="btn btn-primary" type="submit" [disabled]="saving">
               <span *ngIf="saving" class="spinner-border spinner-border-sm me-2"></span>
@@ -206,7 +207,8 @@ export class VaultsComponent implements OnInit {
   }
 
   protected iconFor(icon?: string | null): string {
-    return icon?.trim() || 'work';
+    const normalized = icon?.trim() || 'work';
+    return normalized === 'book-open' ? 'menu_book' : normalized;
   }
 
   private emptyForm(): VaultRequest {

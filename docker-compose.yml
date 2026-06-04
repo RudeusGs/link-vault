@@ -49,6 +49,7 @@ services:
       APP_JWT_SECRET: ${APP_JWT_SECRET:-change-this-secret-to-a-long-random-string}
       APP_JWT_EXPIRATION_MINUTES: ${APP_JWT_EXPIRATION_MINUTES:-120}
       APP_SEED_DEMO_DATA: ${APP_SEED_DEMO_DATA:-false}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
 
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
@@ -56,7 +57,7 @@ services:
       CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER:-link-vault}
       CLOUDINARY_USE_SECURE_URL: ${CLOUDINARY_USE_SECURE_URL:-true}
       CLOUDINARY_MAX_FILE_SIZE_MB: ${CLOUDINARY_MAX_FILE_SIZE_MB:-20}
-      CLOUDINARY_ALLOWED_FORMATS: ${CLOUDINARY_ALLOWED_FORMATS:-jpg,jpeg,png,webp,gif,pdf,txt,md,json,java,ts,js,html,css}
+      CLOUDINARY_ALLOWED_FORMATS: ${CLOUDINARY_ALLOWED_FORMATS:-jpg,jpeg,png,webp,gif,svg,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,md,csv,json,xml,yaml,yml,log,java,kt,py,ts,tsx,js,jsx,html,css,scss,sql,sh,ps1,c,cpp,h,hpp,cs,go,rs,php,rb,swift,dart,zip,rar,7z,mp3,wav,mp4,webm,mov}
     ports:
       - "8080:8080"
     depends_on:
@@ -83,3 +84,4 @@ volumes:
 networks:
   linkvault-network:
     driver: bridge
+

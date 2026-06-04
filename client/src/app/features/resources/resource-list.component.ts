@@ -5,15 +5,16 @@ import { RouterLink } from '@angular/router';
 
 import { Resource, ResourceSearchParams, ResourceType } from '../../core/models/resource.model';
 import { ResourceService } from '../../core/services/resource.service';
+import { LinkPreviewCardComponent } from './link-preview-card.component';
 
 @Component({
   selector: 'app-resource-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, LinkPreviewCardComponent],
   template: `
     <section>
-      <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3 mb-3">
-        <div>
+      <div class="lv-section-toolbar mb-3">
+        <div class="min-w-0">
           <h2 class="lv-section-title mb-1">{{ title }}</h2>
           <p class="lv-muted mb-0">Browse, filter, favorite, archive and open resources.</p>
         </div>
@@ -64,7 +65,7 @@ import { ResourceService } from '../../core/services/resource.service';
       </div>
 
       <div class="row g-4" *ngIf="!loading && resources.length > 0">
-        <div class="col-md-6 col-xxl-4" *ngFor="let resource of resources">
+        <div class="col-md-6 col-xxl-4" *ngFor="let resource of resources; trackBy: trackById">
           <article class="lv-card lv-card-hover lv-resource-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start mb-3">
               <span class="lv-icon-box" [ngClass]="accentFor(resource.resourceType)">
@@ -76,6 +77,11 @@ import { ResourceService } from '../../core/services/resource.service';
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end border-0 shadow p-2">
                   <li><a class="dropdown-item rounded-2" [routerLink]="['/resources', resource.id]">Open</a></li>
+                  <li *ngIf="resource.resourceType === 'LINK'">
+                    <button class="dropdown-item rounded-2" type="button" (click)="refreshPreview(resource)" [disabled]="refreshingPreviewId === resource.id">
+                      {{ refreshingPreviewId === resource.id ? 'Refreshing preview...' : 'Refresh preview' }}
+                    </button>
+                  </li>
                   <li><button class="dropdown-item rounded-2" type="button" (click)="favorite(resource)">{{ resource.isFavorite ? 'Unfavorite' : 'Favorite' }}</button></li>
                   <li><button class="dropdown-item rounded-2" type="button" (click)="archive(resource)">{{ resource.isArchived ? 'Unarchive' : 'Archive' }}</button></li>
                   <li><button class="dropdown-item rounded-2 text-danger" type="button" (click)="delete(resource)">Delete</button></li>
@@ -83,20 +89,27 @@ import { ResourceService } from '../../core/services/resource.service';
               </div>
             </div>
 
-            <a [routerLink]="['/resources', resource.id]" class="text-dark">
-              <h3 class="lv-section-title fs-5 text-truncate mb-2">{{ resource.title }}</h3>
+            <a [routerLink]="['/resources', resource.id]" class="text-dark d-block min-w-0">
+              <h3 class="lv-section-title fs-5 lv-resource-card-title mb-2">{{ resource.title }}</h3>
             </a>
-            <p class="lv-muted lv-line-clamp-2 mb-4">{{ resource.description || resource.url || resource.fileName || 'No description' }}</p>
+            <ng-container *ngIf="resource.resourceType === 'LINK'; else standardSummaryTpl">
+              <app-link-preview-card class="d-block mb-4" [resource]="resource" [compact]="true" [showActions]="false"></app-link-preview-card>
+            </ng-container>
+            <ng-template #standardSummaryTpl>
+              <p class="lv-muted lv-line-clamp-2 lv-resource-summary mb-4">{{ resource.description || resource.url || resource.fileName || 'No description' }}</p>
+            </ng-template>
 
-            <div class="d-flex flex-wrap gap-2 mb-4">
-              <span class="badge rounded-pill lv-badge-soft">{{ resource.resourceType }}</span>
-              <span *ngIf="resource.isFavorite" class="badge rounded-pill text-bg-warning">Favorite</span>
-              <span *ngIf="resource.isArchived" class="badge rounded-pill text-bg-secondary">Archived</span>
-              <span *ngFor="let tag of resource.tags" class="badge rounded-pill text-bg-light border">{{ tag.name }}</span>
+            <div class="d-flex flex-wrap gap-2 mb-4 min-w-0">
+              <span class="badge rounded-pill lv-badge-soft lv-chip">{{ resource.resourceType }}</span>
+              <span *ngIf="resource.isFavorite" class="badge rounded-pill text-bg-warning lv-chip">Favorite</span>
+              <span *ngIf="resource.isArchived" class="badge rounded-pill text-bg-secondary lv-chip">Archived</span>
+              <span *ngFor="let tag of resource.tags" class="badge rounded-pill text-bg-light border lv-chip">
+                <span class="lv-chip-label">{{ tag.name }}</span>
+              </span>
             </div>
 
-            <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
-              <small class="lv-muted">{{ resource.updatedAt | date:'mediumDate' }}</small>
+            <div class="lv-card-footer mt-auto pt-3 border-top">
+              <small class="lv-muted text-truncate">Updated {{ resource.updatedAt | date:'mediumDate' }}</small>
               <a class="btn btn-sm btn-outline-primary" [routerLink]="['/resources', resource.id]">Open</a>
             </div>
           </article>
@@ -110,6 +123,7 @@ export class ResourceListComponent implements OnInit, OnChanges {
   @Input() vaultId?: string | null;
   @Input() folderId?: string | null;
   @Input() rootOnly = false;
+  @Input() initialKeyword = '';
 
   protected resources: Resource[] = [];
   protected loading = false;
@@ -117,16 +131,25 @@ export class ResourceListComponent implements OnInit, OnChanges {
   protected keyword = '';
   protected type: ResourceType | '' = '';
   protected favoriteOnly = false;
+  protected refreshingPreviewId = '';
   protected readonly types: ResourceType[] = ['LINK', 'FILE', 'NOTE', 'SNIPPET'];
 
   private readonly resourceService = inject(ResourceService);
   private loadRequestId = 0;
 
   ngOnInit(): void {
+    this.keyword = this.initialKeyword.trim();
     this.load();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    const keywordChanged = changes['initialKeyword'] && !changes['initialKeyword'].firstChange;
+    if (keywordChanged) {
+      this.keyword = this.initialKeyword.trim();
+      this.load();
+      return;
+    }
+
     const vaultChanged = changes['vaultId'] && !changes['vaultId'].firstChange;
     const folderChanged = changes['folderId'] && !changes['folderId'].firstChange;
     const rootOnlyChanged = changes['rootOnly'] && !changes['rootOnly'].firstChange;
@@ -136,13 +159,18 @@ export class ResourceListComponent implements OnInit, OnChanges {
     }
   }
 
+  setKeyword(keyword: string): void {
+    this.keyword = keyword.trim();
+    this.load();
+  }
+
   load(): void {
     const requestId = ++this.loadRequestId;
     this.loading = true;
     this.error = '';
 
     const params: ResourceSearchParams = {
-      keyword: this.keyword,
+      keyword: this.keyword.trim(),
       type: this.type,
       favorite: this.favoriteOnly || undefined,
       vaultId: this.vaultId ?? undefined,
@@ -150,7 +178,7 @@ export class ResourceListComponent implements OnInit, OnChanges {
       rootOnly: this.rootOnly || undefined
     };
 
-    const hasSearch = Boolean(params.keyword || params.type || params.favorite || params.rootOnly);
+    const hasSearch = Boolean(params.keyword || params.type || params.favorite || params.rootOnly || params.tagId);
     const action = hasSearch
       ? this.resourceService.search(params)
       : this.folderId
@@ -181,7 +209,13 @@ export class ResourceListComponent implements OnInit, OnChanges {
 
   protected favorite(resource: Resource): void {
     this.resourceService.toggleFavorite(resource.id).subscribe({
-      next: (updated) => this.replace(updated),
+      next: (updated) => {
+        if (this.favoriteOnly && !updated.isFavorite) {
+          this.resources = this.resources.filter((item) => item.id !== updated.id);
+          return;
+        }
+        this.replace(updated);
+      },
       error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update favorite')
     });
   }
@@ -204,6 +238,25 @@ export class ResourceListComponent implements OnInit, OnChanges {
     });
   }
 
+  protected refreshPreview(resource: Resource): void {
+    if (resource.resourceType !== 'LINK' || this.refreshingPreviewId) {
+      return;
+    }
+
+    this.refreshingPreviewId = resource.id;
+    this.error = '';
+    this.resourceService.refreshLinkPreview(resource.id).subscribe({
+      next: (updated) => {
+        this.refreshingPreviewId = '';
+        this.replace(updated);
+      },
+      error: (error) => {
+        this.refreshingPreviewId = '';
+        this.error = error instanceof Error ? error.message : 'Could not refresh link preview';
+      }
+    });
+  }
+
   protected iconFor(type: ResourceType): string {
     switch (type) {
       case 'LINK': return 'link';
@@ -220,6 +273,10 @@ export class ResourceListComponent implements OnInit, OnChanges {
       case 'NOTE': return 'lv-badge-tertiary';
       case 'SNIPPET': return 'lv-badge-secondary';
     }
+  }
+
+  protected trackById(_index: number, resource: Resource): string {
+    return resource.id;
   }
 
   private replace(resource: Resource): void {

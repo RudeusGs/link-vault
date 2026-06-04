@@ -137,6 +137,50 @@ textarea {
   letter-spacing: -0.03em;
 }
 
+.lv-break-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lv-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lv-page-header-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.lv-action-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.lv-action-toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.lv-section-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lv-section-toolbar.align-end {
+  align-items: stretch;
+}
+
 .lv-section-title {
   color: #191c1d;
   font-size: 20px;
@@ -171,6 +215,100 @@ textarea {
   background: #f3f4f5;
 }
 
+.lv-link-preview {
+  display: grid;
+  grid-template-columns: minmax(128px, 32%) minmax(0, 1fr);
+  min-height: 156px;
+  overflow: hidden;
+  border: 1px solid #d8dde6;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.lv-link-preview.compact {
+  grid-template-columns: 104px minmax(0, 1fr);
+  min-height: 118px;
+  border-radius: 10px;
+}
+
+.lv-link-preview-media,
+.lv-link-preview-placeholder {
+  min-height: 100%;
+  background: #eef3ff;
+}
+
+.lv-link-preview-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 156px;
+  object-fit: cover;
+}
+
+.lv-link-preview.compact .lv-link-preview-media img {
+  min-height: 118px;
+}
+
+.lv-link-preview-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #003d9b;
+}
+
+.lv-link-preview-placeholder .material-symbols-outlined {
+  font-size: 34px;
+}
+
+.lv-link-preview-body {
+  min-width: 0;
+  padding: 16px;
+}
+
+.lv-link-preview.compact .lv-link-preview-body {
+  padding: 12px;
+}
+
+.lv-link-favicon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.lv-link-preview-title {
+  margin: 0 0 6px;
+  color: #191c1d;
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.lv-link-preview.compact .lv-link-preview-title {
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.lv-link-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lv-link-preview-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .lv-icon-box {
   display: inline-flex;
   align-items: center;
@@ -187,6 +325,38 @@ textarea {
   width: 52px;
   height: 52px;
   border-radius: 16px;
+}
+
+.lv-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 8px;
+}
+
+.lv-icon-choice {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 74px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #e1e3e4;
+  border-radius: 8px;
+  color: #434654;
+  background: #ffffff;
+  transition: all 0.16s ease;
+}
+
+.lv-icon-choice:hover {
+  border-color: #c3c6d6;
+  background: #f3f4f5;
+}
+
+.lv-icon-choice.active {
+  color: #003d9b;
+  border-color: #003d9b;
+  background: #dae2ff;
 }
 
 .lv-primary {
@@ -218,6 +388,24 @@ textarea {
   background: #ffdad6;
 }
 
+.lv-chip {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.lv-chip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lv-empty-state {
   border: 2px dashed #c3c6d6;
   border-radius: 16px;
@@ -225,6 +413,16 @@ textarea {
   color: #737685;
   text-align: center;
   background: rgba(255, 255, 255, 0.65);
+}
+
+.lv-upload-dropzone {
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.lv-upload-dropzone.active {
+  border-color: #003d9b;
+  background: #eef3ff;
+  transform: translateY(-1px);
 }
 
 .lv-auth-card {
@@ -345,6 +543,135 @@ textarea {
   background: #dde3ea;
 }
 
+.lv-folder-toggle {
+  width: 20px;
+  flex: 0 0 20px;
+  font-size: 20px;
+}
+
+.lv-tree-spacer {
+  width: 20px;
+  flex: 0 0 20px;
+}
+
+.lv-tree-count {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 7px;
+  color: #434654;
+  background: #eef0f2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lv-tree-resource {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 7px 8px;
+  color: #434654;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.lv-tree-resource:hover {
+  color: #003d9b;
+  background: #eef3ff;
+}
+
+.lv-tree-resource-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #0040a2;
+  background: #dae2ff;
+}
+
+.lv-tree-resource-icon .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.lv-tree-resource-icon.pdf {
+  color: #93000a;
+  background: #ffdad6;
+}
+
+.lv-tree-resource-icon.doc {
+  color: #0040a2;
+  background: #dae2ff;
+}
+
+.lv-tree-resource-icon.sheet {
+  color: #0b6b3a;
+  background: #d8f1df;
+}
+
+.lv-tree-resource-icon.slide {
+  color: #812800;
+  background: #ffdbcf;
+}
+
+.lv-tree-resource-icon.image {
+  color: #5c3b00;
+  background: #ffe6a6;
+}
+
+.lv-tree-resource-icon.archive {
+  color: #41474d;
+  background: #dde3ea;
+}
+
+.lv-tree-resource-icon.link {
+  color: #003d9b;
+  background: #d7e3ff;
+}
+
+.lv-tree-resource-icon.note {
+  color: #5f3f00;
+  background: #ffecb5;
+}
+
+.lv-tree-resource-icon.snippet {
+  color: #40356f;
+  background: #e6ddff;
+}
+
+.lv-tree-resource-main {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 1px;
+}
+
+.lv-tree-resource-title,
+.lv-tree-resource-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lv-tree-resource-title {
+  color: #191c1d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lv-tree-resource-meta {
+  color: #737685;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .lv-node-actions {
   opacity: 0;
   transition: opacity 0.16s ease;
@@ -363,6 +690,40 @@ textarea {
   opacity: 1;
 }
 
+.lv-stack-card,
+.lv-resource-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lv-resource-card-title {
+  display: -webkit-box;
+  min-height: 56px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.lv-resource-summary {
+  min-height: 42px;
+  overflow-wrap: anywhere;
+}
+
+.lv-card-footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lv-card-footer .btn {
+  flex: 0 0 auto;
+}
+
 .lv-code-preview {
   max-height: 520px;
   overflow: auto;
@@ -373,10 +734,121 @@ textarea {
   font-family: "Cascadia Code", "Courier New", monospace;
 }
 
+.lv-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e1e3e4;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.lv-segmented-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: #434654;
+  background: transparent;
+  font-weight: 600;
+}
+
+.lv-segmented-item.active {
+  color: #003d9b;
+  background: #dae2ff;
+}
+
+.lv-pdf-frame {
+  min-height: 72vh;
+}
+
+.lv-doc-page {
+  max-height: 72vh;
+  overflow: auto;
+  border: 1px solid #e1e3e4;
+  border-radius: 10px;
+  padding: 28px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(25, 28, 29, 0.02);
+}
+
+.lv-doc-content {
+  color: #191c1d;
+  white-space: pre-wrap;
+  line-height: 1.75;
+  font-size: 15px;
+}
+
+.lv-insight-tile {
+  border: 1px solid #e1e3e4;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.lv-demo-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #c3c6d6;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #0040a2;
+  background: #eef3ff;
+  font-weight: 600;
+}
+
+.lv-demo-strip span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lv-detail-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.lv-detail-row strong {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.lv-breadcrumb-label {
+  display: inline-block;
+  max-width: min(420px, 70vw);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.lv-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .lv-line-clamp-2 {
   display: -webkit-box;
   overflow: hidden;
   -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.lv-line-clamp-3 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
@@ -410,5 +882,74 @@ textarea {
   .lv-container {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .lv-action-toolbar,
+  .lv-action-toolbar.compact,
+  .lv-form-actions {
+    width: 100%;
+  }
+
+  .lv-action-toolbar .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+
+  .lv-link-preview-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .lv-preview-input-group {
+    gap: 8px;
+  }
+
+  .lv-preview-input-group > .form-control,
+  .lv-preview-input-group > .btn {
+    width: 100%;
+    flex: 1 1 100%;
+    border-radius: 10px !important;
+  }
+
+  .lv-form-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .lv-link-preview,
+  .lv-link-preview.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .lv-link-preview-media img,
+  .lv-link-preview.compact .lv-link-preview-media img,
+  .lv-link-preview-placeholder {
+    min-height: 160px;
+  }
+}
+
+@media (min-width: 768px) {
+  .lv-page-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .lv-page-header .lv-action-toolbar {
+    justify-content: flex-end;
+    max-width: 46%;
+  }
+
+  .lv-section-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .lv-section-toolbar.align-end {
+    align-items: flex-end;
+  }
+
+  .lv-section-toolbar .lv-action-toolbar {
+    justify-content: flex-end;
   }
 }
