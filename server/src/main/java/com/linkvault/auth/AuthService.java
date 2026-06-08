@@ -5,14 +5,15 @@ import com.linkvault.auth.dto.AuthResponse;
 import com.linkvault.auth.dto.LoginRequest;
 import com.linkvault.auth.dto.RegisterRequest;
 import com.linkvault.auth.dto.UserResponse;
+import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.auth.security.JwtService;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.UnauthorizedException;
+import com.linkvault.common.util.TextSanitizer;
 import com.linkvault.users.User;
 import com.linkvault.users.UserContextService;
 import com.linkvault.users.UserRepository;
 import java.time.Instant;
-import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,14 +69,17 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         String username = normalizeUsername(request.username());
         User user = userRepository.findByUsernameIgnoreCase(username)
-            .orElseThrow(() -> new UnauthorizedException("Username or password is incorrect"));
+            .orElseThrow(() -> new UnauthorizedException(
+                ErrorCode.AUTH_INVALID_CREDENTIALS,
+                "Username or password is incorrect"
+            ));
 
         if (Boolean.FALSE.equals(user.getIsEnabled())) {
             throw new UnauthorizedException("Account is disabled");
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new UnauthorizedException("Username or password is incorrect");
+            throw new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS, "Username or password is incorrect");
         }
 
         user.setLastLoginAt(Instant.now());
@@ -123,27 +127,18 @@ public class AuthService {
     }
 
     private String normalizeEmail(String email) {
-        if (isBlank(email)) {
-            return "";
-        }
-        return email.trim().toLowerCase(Locale.ROOT);
+        return TextSanitizer.lowerTrimmed(email);
     }
 
     private String normalizeUsername(String username) {
-        if (isBlank(username)) {
-            return "";
-        }
-        return username.trim().toLowerCase(Locale.ROOT);
+        return TextSanitizer.lowerTrimmed(username);
     }
 
     private String trimToNull(String value) {
-        if (isBlank(value)) {
-            return null;
-        }
-        return value.trim();
+        return TextSanitizer.trimToNull(value);
     }
 
     private boolean isBlank(String value) {
-        return value == null || value.isBlank();
+        return TextSanitizer.isBlank(value);
     }
 }

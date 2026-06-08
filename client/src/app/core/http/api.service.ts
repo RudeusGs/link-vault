@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { ApiResponse, HealthData } from '../models/api-response.model';
+import { ApiResponse, HealthData } from '../../shared/models/api-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -83,7 +83,7 @@ export class ApiService {
       throw new Error(response.message || 'Request failed');
     }
 
-    return response.data;
+    return response.data as T;
   }
 
   private toParams(params?: object): HttpParams {
@@ -103,11 +103,11 @@ export class ApiService {
 
   private handleError(error: unknown): Observable<never> {
     if (error instanceof HttpErrorResponse) {
-      const payload = error.error as { message?: string; errors?: unknown } | string | null;
+      const payload = error.error as { message?: string; details?: unknown; errorCode?: string } | string | null;
       if (payload && typeof payload === 'object') {
         const message = typeof payload.message === 'string' ? payload.message : '';
         if (message) {
-          return throwError(() => new Error(this.composePayloadMessage(message, payload.errors)));
+          return throwError(() => new Error(this.composePayloadMessage(message, payload.details)));
         }
       }
 
@@ -141,19 +141,18 @@ export class ApiService {
     return throwError(() => (error instanceof Error ? error : new Error('Có lỗi không xác định')));
   }
 
-  private composePayloadMessage(message: string, errors: unknown): string {
-    const details = this.formatValidationErrors(errors);
-    return details ? `${message}: ${details}` : message;
+  private composePayloadMessage(message: string, details: unknown): string {
+    const formattedDetails = this.formatValidationErrors(details);
+    return formattedDetails ? `${message}: ${formattedDetails}` : message;
   }
 
-  private formatValidationErrors(errors: unknown): string {
-    if (!errors || typeof errors !== 'object' || Array.isArray(errors)) {
+  private formatValidationErrors(details: unknown): string {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) {
       return '';
     }
 
-    return Object.entries(errors as Record<string, unknown>)
+    return Object.entries(details as Record<string, unknown>)
       .map(([field, value]) => `${field} ${String(value)}`)
       .join('; ');
   }
 }
-

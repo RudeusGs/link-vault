@@ -2,8 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { LinkPreview, ResourceRequest, ResourceType } from '../../core/models/resource.model';
-import { ResourceService } from '../../core/services/resource.service';
+import { ResourceService } from './data-access/resource.service';
+import { LinkPreview, ResourceRequest, ResourceType } from './models/resource.model';
 import { LinkPreviewCardComponent } from './link-preview-card.component';
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;

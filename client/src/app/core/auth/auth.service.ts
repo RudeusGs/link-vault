@@ -7,8 +7,8 @@ import {
   AvailabilityResponse,
   LoginRequest,
   RegisterRequest
-} from '../models/auth.model';
-import { ApiService } from './api.service';
+} from '../../features/auth/models/auth.model';
+import { ApiService } from '../http/api.service';
 
 const TOKEN_KEY = 'linkvault.access_token';
 const USER_KEY = 'linkvault.user';

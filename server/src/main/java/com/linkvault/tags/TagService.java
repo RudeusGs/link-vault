@@ -1,6 +1,7 @@
 package com.linkvault.tags;
 
 import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.resources.ResourceTagRepository;
@@ -69,7 +70,7 @@ public class TagService {
     @Transactional(readOnly = true)
     public Tag getTag(UUID id) {
         Tag tag = tagRepository.findById(id)
-            .orElseThrow(() -> new NotFoundException("Tag not found"));
+            .orElseThrow(() -> new NotFoundException(ErrorCode.TAG_NOT_FOUND, "Tag not found"));
         ensureOwner(tag);
         return tag;
     }
@@ -130,7 +131,7 @@ public class TagService {
     private void ensureOwner(Tag tag) {
         UUID currentUserId = userContextService.getCurrentUser().getId();
         if (!tag.getUser().getId().equals(currentUserId)) {
-            throw new ForbiddenException("You do not have access to this tag");
+            throw new ForbiddenException(ErrorCode.TAG_ACCESS_DENIED, "You do not have access to this tag");
         }
     }
 
@@ -153,5 +154,4 @@ public class TagService {
         return value.trim();
     }
 }
-
 

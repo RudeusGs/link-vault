@@ -3,8 +3,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
-import { ApiService } from './core/services/api.service';
-import { AuthService } from './core/services/auth.service';
+import { AuthService } from './core/auth/auth.service';
+import { ApiService } from './core/http/api.service';
 
 type HealthState = 'checking' | 'online' | 'offline';
 

@@ -1,14 +1,14 @@
 package com.linkvault.vaults;
 
 import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.folders.Folder;
 import com.linkvault.folders.FolderRepository;
 import com.linkvault.resources.Resource;
+import com.linkvault.resources.ResourceCleanupService;
 import com.linkvault.resources.ResourceRepository;
-import com.linkvault.resources.ResourceTagRepository;
-import com.linkvault.resources.ResourceViewRepository;
 import com.linkvault.users.User;
 import com.linkvault.users.UserContextService;
 import java.util.List;
@@ -22,23 +22,20 @@ public class VaultService {
     private final VaultRepository vaultRepository;
     private final FolderRepository folderRepository;
     private final ResourceRepository resourceRepository;
-    private final ResourceTagRepository resourceTagRepository;
-    private final ResourceViewRepository resourceViewRepository;
+    private final ResourceCleanupService resourceCleanupService;
     private final UserContextService userContextService;
 
     public VaultService(
         VaultRepository vaultRepository,
         FolderRepository folderRepository,
         ResourceRepository resourceRepository,
-        ResourceTagRepository resourceTagRepository,
-        ResourceViewRepository resourceViewRepository,
+        ResourceCleanupService resourceCleanupService,
         UserContextService userContextService
     ) {
         this.vaultRepository = vaultRepository;
         this.folderRepository = folderRepository;
         this.resourceRepository = resourceRepository;
-        this.resourceTagRepository = resourceTagRepository;
-        this.resourceViewRepository = resourceViewRepository;
+        this.resourceCleanupService = resourceCleanupService;
         this.userContextService = userContextService;
     }
 
@@ -77,11 +74,8 @@ public class VaultService {
     public void delete(UUID id) {
         Vault vault = getVault(id);
 
-        for (Resource resource : resourceRepository.findByVault_IdOrderByCreatedAtDesc(id)) {
-            resourceTagRepository.deleteByResource_Id(resource.getId());
-            resourceViewRepository.deleteByResource_Id(resource.getId());
-        }
-        resourceRepository.deleteAll(resourceRepository.findByVault_IdOrderByCreatedAtDesc(id));
+        List<Resource> resources = resourceRepository.findByVault_IdOrderByCreatedAtDesc(id);
+        resourceCleanupService.deleteAll(resources);
 
         List<Folder> folders = folderRepository.findByVault_IdOrderBySortOrderAscNameAsc(id);
         folders.forEach(folder -> folder.setParent(null));
@@ -95,7 +89,7 @@ public class VaultService {
     @Transactional(readOnly = true)
     public Vault getVault(UUID id) {
         Vault vault = vaultRepository.findById(id)
-            .orElseThrow(() -> new NotFoundException("Vault not found"));
+            .orElseThrow(() -> new NotFoundException(ErrorCode.VAULT_NOT_FOUND, "Vault not found"));
         ensureOwner(vault);
         return vault;
     }
@@ -115,7 +109,7 @@ public class VaultService {
     private void ensureOwner(Vault vault) {
         UUID currentUserId = userContextService.getCurrentUser().getId();
         if (!vault.getUser().getId().equals(currentUserId)) {
-            throw new ForbiddenException("You do not have access to this vault");
+            throw new ForbiddenException(ErrorCode.VAULT_ACCESS_DENIED, "You do not have access to this vault");
         }
     }
 

@@ -3,8 +3,8 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Vault, VaultRequest } from '../../core/models/vault.model';
-import { VaultService } from '../../core/services/vault.service';
+import { VaultService } from './data-access/vault.service';
+import { Vault, VaultRequest } from './models/vault.model';
 import { VaultIconPickerComponent } from './vault-icon-picker.component';
 
 @Component({

@@ -5,10 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { DocumentPreview, Resource, ResourcePreview, ResourceRequest } from '../../core/models/resource.model';
-import { Tag } from '../../core/models/tag.model';
-import { ResourceService } from '../../core/services/resource.service';
-import { TagService } from '../../core/services/tag.service';
+import { TagService } from '../tags/data-access/tag.service';
+import { Tag } from '../tags/models/tag.model';
+import { ResourceService } from './data-access/resource.service';
+import { DocumentPreview, Resource, ResourcePreview, ResourceRequest } from './models/resource.model';
 import { LinkPreviewCardComponent } from './link-preview-card.component';
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];

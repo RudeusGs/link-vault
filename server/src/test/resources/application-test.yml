@@ -9,6 +9,10 @@ spring:
       ddl-auto: create-drop
     open-in-view: false
     show-sql: false
+  flyway:
+    enabled: false
 
 app:
   seed-demo-data: false
+  jwt:
+    secret: test-jwt-secret-that-is-long-enough-for-hmac

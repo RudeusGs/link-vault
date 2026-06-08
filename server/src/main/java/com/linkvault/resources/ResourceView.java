@@ -5,6 +5,7 @@ import com.linkvault.users.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -17,7 +18,14 @@ import lombok.Setter;
 @Setter
 @Entity
 @NoArgsConstructor
-@Table(name = "resource_views")
+@Table(
+    name = "resource_views",
+    indexes = {
+        @Index(name = "idx_resource_views_resource", columnList = "resource_id"),
+        @Index(name = "idx_resource_views_user", columnList = "user_id"),
+        @Index(name = "idx_resource_views_viewed_at", columnList = "viewed_at")
+    }
+)
 public class ResourceView extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

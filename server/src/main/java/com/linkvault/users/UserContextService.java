@@ -1,6 +1,7 @@
 package com.linkvault.users;
 
 import com.linkvault.auth.security.AuthenticatedUser;
+import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.UnauthorizedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,7 +27,7 @@ public class UserContextService {
         Object principal = authentication.getPrincipal();
         if (principal instanceof AuthenticatedUser authenticatedUser) {
             User user = userRepository.findById(authenticatedUser.id())
-                .orElseThrow(() -> new UnauthorizedException("User account no longer exists"));
+                .orElseThrow(() -> new UnauthorizedException(ErrorCode.AUTH_LOGIN_REQUIRED, "User account no longer exists"));
             if (Boolean.FALSE.equals(user.getIsEnabled())) {
                 throw new UnauthorizedException("Account is disabled");
             }

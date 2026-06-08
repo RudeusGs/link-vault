@@ -4,12 +4,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { Folder, FolderRequest } from '../../core/models/folder.model';
-import { Resource, ResourceType } from '../../core/models/resource.model';
-import { Vault, VaultRequest } from '../../core/models/vault.model';
-import { FolderService } from '../../core/services/folder.service';
-import { ResourceService } from '../../core/services/resource.service';
-import { VaultService } from '../../core/services/vault.service';
+import { FolderService } from '../folders/data-access/folder.service';
+import { Folder, FolderRequest } from '../folders/models/folder.model';
+import { ResourceService } from '../resources/data-access/resource.service';
+import { Resource, ResourceType } from '../resources/models/resource.model';
+import { VaultService } from './data-access/vault.service';
+import { Vault, VaultRequest } from './models/vault.model';
 import { ResourceFormComponent } from '../resources/resource-form.component';
 import { ResourceListComponent } from '../resources/resource-list.component';
 import { VaultIconPickerComponent } from './vault-icon-picker.component';

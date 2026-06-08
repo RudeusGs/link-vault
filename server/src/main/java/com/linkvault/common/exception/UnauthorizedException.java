@@ -1,8 +1,12 @@
 package com.linkvault.common.exception;
 
-public class UnauthorizedException extends RuntimeException {
+public class UnauthorizedException extends AppException {
 
     public UnauthorizedException(String message) {
-        super(message);
+        super(ErrorCode.AUTH_LOGIN_REQUIRED, message);
+    }
+
+    public UnauthorizedException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
     }
 }

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { DashboardSummary } from '../models/dashboard-summary.model';
-import { ApiService } from './api.service';
+import { ApiService } from '../../../core/http/api.service';
 
 @Injectable({ providedIn: 'root' })
 export class DashboardService {
