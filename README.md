@@ -238,6 +238,11 @@ Main REST endpoints:
 | Area | Endpoints |
 | --- | --- |
 | Auth | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `GET /api/auth/availability` |
+| Auth Sessions | `POST /api/auth/refresh`, `POST /api/auth/logout`, `GET /api/auth/sessions`, `DELETE /api/auth/sessions/{sessionId}` |
+| Workspaces | `GET/POST /api/workspaces`, `GET/PUT/DELETE /api/workspaces/{workspaceId}`, `GET /api/workspaces/{workspaceId}/usage` |
+| Workspace Members | `GET /api/workspaces/{workspaceId}/members`, `PATCH /api/workspaces/{workspaceId}/members/{memberId}/role`, `DELETE /api/workspaces/{workspaceId}/members/{memberId}` |
+| Workspace Invitations | `GET/POST /api/workspaces/{workspaceId}/invitations`, `DELETE /api/workspaces/{workspaceId}/invitations/{invitationId}`, `POST /api/workspace-invitations/{token}/accept`, `POST /api/workspace-invitations/{token}/decline` |
+| Workspace Audit Logs | `GET /api/workspaces/{workspaceId}/audit-logs` |
 | Dashboard | `GET /api/dashboard/summary` |
 | Vaults | `GET/POST /api/vaults`, `GET/PUT/DELETE /api/vaults/{id}` |
 | Folders | `GET /api/vaults/{vaultId}/folders`, `GET/PUT/DELETE /api/folders/{id}`, `POST /api/folders/{parentId}/children` |

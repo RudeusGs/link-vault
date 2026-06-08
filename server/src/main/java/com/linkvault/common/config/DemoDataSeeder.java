@@ -1,16 +1,18 @@
 package com.linkvault.common.config;
 
-import com.linkvault.folders.Folder;
-import com.linkvault.folders.FolderRepository;
-import com.linkvault.resources.Resource;
-import com.linkvault.resources.ResourceRepository;
-import com.linkvault.resources.ResourceType;
-import com.linkvault.users.User;
-import com.linkvault.users.UserRepository;
-import com.linkvault.vaults.Vault;
-import com.linkvault.vaults.VaultRepository;
-import org.springframework.boot.CommandLineRunner;
+import com.linkvault.folders.entity.Folder;
+import com.linkvault.folders.repository.FolderRepository;
+import com.linkvault.resources.entity.Resource;
+import com.linkvault.resources.enums.ResourceType;
+import com.linkvault.resources.repository.ResourceRepository;
+import com.linkvault.users.entity.User;
+import com.linkvault.users.repository.UserRepository;
+import com.linkvault.vaults.entity.Vault;
+import com.linkvault.vaults.repository.VaultRepository;
+import com.linkvault.workspaces.entity.Workspace;
+import com.linkvault.workspaces.service.WorkspaceService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,19 +26,22 @@ public class DemoDataSeeder implements CommandLineRunner {
     private final FolderRepository folderRepository;
     private final ResourceRepository resourceRepository;
     private final PasswordEncoder passwordEncoder;
+    private final WorkspaceService workspaceService;
 
     public DemoDataSeeder(
         UserRepository userRepository,
         VaultRepository vaultRepository,
         FolderRepository folderRepository,
         ResourceRepository resourceRepository,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        WorkspaceService workspaceService
     ) {
         this.userRepository = userRepository;
         this.vaultRepository = vaultRepository;
         this.folderRepository = folderRepository;
         this.resourceRepository = resourceRepository;
         this.passwordEncoder = passwordEncoder;
+        this.workspaceService = workspaceService;
     }
 
     @Override
@@ -55,9 +60,11 @@ public class DemoDataSeeder implements CommandLineRunner {
         user.setIsEnabled(true);
         user.setAuthProvider("LOCAL");
         user = userRepository.save(user);
+        Workspace workspace = workspaceService.createDefaultWorkspaceForUser(user);
 
         Vault vault = new Vault();
         vault.setUser(user);
+        vault.setWorkspace(workspace);
         vault.setName("Learning");
         vault.setDescription("A small demo vault for LinkVault");
         vault.setIcon("menu_book");
