@@ -3,7 +3,6 @@ package com.linkvault.workspaces.service;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.resources.repository.ResourceRepository;
-import com.linkvault.vaults.entity.Vault;
 import com.linkvault.vaults.repository.VaultRepository;
 import com.linkvault.workspaces.dto.WorkspaceUsageResponse;
 import com.linkvault.workspaces.entity.Workspace;

@@ -1,6 +1,5 @@
 package com.linkvault.common.config;
 
-import com.linkvault.common.response.ApiResponse;
 import com.linkvault.folders.entity.Folder;
 import com.linkvault.folders.repository.FolderRepository;
 import com.linkvault.resources.entity.Resource;

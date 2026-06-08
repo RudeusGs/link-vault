@@ -3,7 +3,6 @@ package com.linkvault.tags.controller;
 import com.linkvault.common.response.ApiResponse;
 import com.linkvault.tags.dto.TagRequest;
 import com.linkvault.tags.dto.TagResponse;
-import com.linkvault.tags.entity.Tag;
 import com.linkvault.tags.service.TagService;
 import jakarta.validation.Valid;
 import java.util.List;

@@ -10,7 +10,6 @@ import com.linkvault.auth.dto.UserResponse;
 import com.linkvault.auth.dto.UserSessionResponse;
 import com.linkvault.auth.service.AuthService;
 import com.linkvault.common.response.ApiResponse;
-import com.linkvault.users.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;

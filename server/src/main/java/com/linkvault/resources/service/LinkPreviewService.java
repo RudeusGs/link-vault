@@ -1,8 +1,6 @@
 package com.linkvault.resources.service;
 
 import com.linkvault.resources.dto.LinkPreviewResponse;
-import com.linkvault.tags.entity.Tag;
-import com.linkvault.users.entity.User;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.IOException;

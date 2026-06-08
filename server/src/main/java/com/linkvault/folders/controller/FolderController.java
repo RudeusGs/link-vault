@@ -3,7 +3,6 @@ package com.linkvault.folders.controller;
 import com.linkvault.common.response.ApiResponse;
 import com.linkvault.folders.dto.FolderRequest;
 import com.linkvault.folders.dto.FolderResponse;
-import com.linkvault.folders.entity.Folder;
 import com.linkvault.folders.service.FolderService;
 import jakarta.validation.Valid;
 import java.util.List;

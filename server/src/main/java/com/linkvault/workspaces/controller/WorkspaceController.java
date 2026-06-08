@@ -6,7 +6,6 @@ import com.linkvault.workspaces.dto.WorkspaceMemberRoleRequest;
 import com.linkvault.workspaces.dto.WorkspaceRequest;
 import com.linkvault.workspaces.dto.WorkspaceResponse;
 import com.linkvault.workspaces.dto.WorkspaceUsageResponse;
-import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.service.WorkspaceService;
 import jakarta.validation.Valid;
 import java.util.List;

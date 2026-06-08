@@ -3,8 +3,6 @@ package com.linkvault.storage.service;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.linkvault.common.exception.StorageException;
-import com.linkvault.folders.entity.Folder;
-import com.linkvault.resources.enums.ResourceType;
 import com.linkvault.storage.config.CloudinaryProperties;
 import com.linkvault.storage.dto.StorageFile;
 import com.linkvault.storage.dto.StorageResult;

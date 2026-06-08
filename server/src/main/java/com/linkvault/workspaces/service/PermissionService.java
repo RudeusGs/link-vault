@@ -4,7 +4,6 @@ import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.users.entity.User;
 import com.linkvault.users.service.UserContextService;
-import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.entity.WorkspaceMember;
 import com.linkvault.workspaces.enums.WorkspaceRole;
 import com.linkvault.workspaces.repository.WorkspaceMemberRepository;

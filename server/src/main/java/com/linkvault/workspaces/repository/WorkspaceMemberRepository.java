@@ -1,7 +1,5 @@
 package com.linkvault.workspaces.repository;
 
-import com.linkvault.users.entity.User;
-import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.entity.WorkspaceMember;
 import com.linkvault.workspaces.enums.WorkspaceRole;
 import java.util.List;

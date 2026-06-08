@@ -1,7 +1,6 @@
 package com.linkvault.audit.repository;
 
 import com.linkvault.audit.entity.AuditLog;
-import com.linkvault.workspaces.entity.Workspace;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;

@@ -89,7 +89,6 @@ class WorkspaceServiceTest {
     void requireCanWriteRejectsViewerMembership() {
         User user = user("ada", "Ada Lovelace");
         Workspace workspace = workspace(user, "ada");
-        WorkspaceMember member = member(user, workspace, WorkspaceRole.VIEWER);
 
         when(permissionService.requireEditor(workspace.getId())).thenThrow(ForbiddenException.class);
 
@@ -99,7 +98,6 @@ class WorkspaceServiceTest {
 
     @Test
     void requireMemberRejectsUsersOutsideWorkspace() {
-        User user = user("ada", "Ada Lovelace");
         UUID workspaceId = UUID.randomUUID();
 
         when(permissionService.requireMember(workspaceId)).thenThrow(ForbiddenException.class);

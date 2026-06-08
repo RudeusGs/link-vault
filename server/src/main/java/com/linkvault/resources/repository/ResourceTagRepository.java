@@ -1,8 +1,6 @@
 package com.linkvault.resources.repository;
 
-import com.linkvault.resources.entity.Resource;
 import com.linkvault.resources.entity.ResourceTag;
-import com.linkvault.tags.entity.Tag;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;

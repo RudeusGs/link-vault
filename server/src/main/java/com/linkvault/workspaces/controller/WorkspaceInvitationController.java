@@ -3,7 +3,6 @@ package com.linkvault.workspaces.controller;
 import com.linkvault.common.response.ApiResponse;
 import com.linkvault.workspaces.dto.WorkspaceInvitationRequest;
 import com.linkvault.workspaces.dto.WorkspaceInvitationResponse;
-import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.service.WorkspaceInvitationService;
 import jakarta.validation.Valid;
 import java.util.List;

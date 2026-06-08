@@ -1,7 +1,6 @@
 package com.linkvault.auth.repository;
 
 import com.linkvault.auth.entity.RefreshToken;
-import com.linkvault.users.entity.User;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

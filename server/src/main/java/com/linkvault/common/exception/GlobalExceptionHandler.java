@@ -1,7 +1,6 @@
 package com.linkvault.common.exception;
 
 import com.linkvault.common.response.ApiResponse;
-import com.linkvault.resources.entity.Resource;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;

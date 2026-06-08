@@ -8,7 +8,6 @@ import com.linkvault.auth.dto.RefreshTokenRequest;
 import com.linkvault.auth.dto.RegisterRequest;
 import com.linkvault.auth.dto.UserResponse;
 import com.linkvault.auth.dto.UserSessionResponse;
-import com.linkvault.auth.entity.RefreshToken;
 import com.linkvault.auth.security.JwtService;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;

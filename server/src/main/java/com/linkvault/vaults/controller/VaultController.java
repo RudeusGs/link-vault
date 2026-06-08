@@ -3,7 +3,6 @@ package com.linkvault.vaults.controller;
 import com.linkvault.common.response.ApiResponse;
 import com.linkvault.vaults.dto.VaultRequest;
 import com.linkvault.vaults.dto.VaultResponse;
-import com.linkvault.vaults.entity.Vault;
 import com.linkvault.vaults.service.VaultService;
 import jakarta.validation.Valid;
 import java.util.List;

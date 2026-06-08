@@ -28,7 +28,6 @@ import com.linkvault.users.entity.User;
 import com.linkvault.users.service.UserContextService;
 import com.linkvault.vaults.entity.Vault;
 import com.linkvault.vaults.service.VaultService;
-import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.service.QuotaService;
 import com.linkvault.workspaces.service.WorkspaceService;
 import java.time.Duration;

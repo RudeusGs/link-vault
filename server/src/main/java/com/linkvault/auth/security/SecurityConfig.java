@@ -3,7 +3,6 @@ package com.linkvault.auth.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.response.ApiResponse;
-import com.linkvault.resources.entity.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

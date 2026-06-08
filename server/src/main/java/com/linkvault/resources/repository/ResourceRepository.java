@@ -1,10 +1,7 @@
 package com.linkvault.resources.repository;
 
-import com.linkvault.folders.entity.Folder;
 import com.linkvault.resources.entity.Resource;
 import com.linkvault.resources.enums.ResourceType;
-import com.linkvault.vaults.entity.Vault;
-import com.linkvault.workspaces.entity.Workspace;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

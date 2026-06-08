@@ -1,7 +1,5 @@
 package com.linkvault.storage.config;
 
-import com.linkvault.folders.entity.Folder;
-import com.linkvault.vaults.entity.Vault;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;

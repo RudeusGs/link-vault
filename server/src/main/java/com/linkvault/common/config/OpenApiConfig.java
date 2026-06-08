@@ -1,6 +1,5 @@
 package com.linkvault.common.config;
 
-import com.linkvault.resources.entity.Resource;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;

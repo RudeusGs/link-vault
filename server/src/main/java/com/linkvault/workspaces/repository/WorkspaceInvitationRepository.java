@@ -1,6 +1,5 @@
 package com.linkvault.workspaces.repository;
 
-import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.entity.WorkspaceInvitation;
 import com.linkvault.workspaces.enums.InvitationStatus;
 import java.util.List;
