@@ -3,7 +3,7 @@ package com.linkvault.auth.security;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linkvault.common.exception.UnauthorizedException;
-import com.linkvault.users.User;
+import com.linkvault.users.entity.User;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;

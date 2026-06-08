@@ -1,5 +1,6 @@
 package com.linkvault.auth.security;
 
+import com.linkvault.vaults.entity.Vault;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
