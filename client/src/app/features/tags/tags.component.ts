@@ -2,8 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { Tag, TagRequest } from '../../core/models/tag.model';
-import { TagService } from '../../core/services/tag.service';
+import { TagService } from './data-access/tag.service';
+import { Tag, TagRequest } from './models/tag.model';
 
 @Component({
   selector: 'app-tags',

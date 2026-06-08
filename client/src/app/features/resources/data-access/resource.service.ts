@@ -10,7 +10,7 @@ import {
   ResourceRequest,
   ResourceSearchParams
 } from '../models/resource.model';
-import { ApiService } from './api.service';
+import { ApiService } from '../../../core/http/api.service';
 
 @Injectable({
   providedIn: 'root'

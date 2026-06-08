@@ -5,6 +5,7 @@ import com.linkvault.vaults.Vault;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -16,7 +17,14 @@ import lombok.Setter;
 @Setter
 @Entity
 @NoArgsConstructor
-@Table(name = "folders")
+@Table(
+    name = "folders",
+    indexes = {
+        @Index(name = "idx_folders_vault", columnList = "vault_id"),
+        @Index(name = "idx_folders_parent", columnList = "parent_id"),
+        @Index(name = "idx_folders_created_at", columnList = "created_at")
+    }
+)
 public class Folder extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

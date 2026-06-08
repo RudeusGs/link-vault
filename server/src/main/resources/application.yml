@@ -8,12 +8,16 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
     open-in-view: false
     show-sql: false
     properties:
       hibernate:
         format_sql: true
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
+    locations: classpath:db/migration
   servlet:
     multipart:
       max-file-size: 20MB
@@ -26,7 +30,7 @@ app:
   seed-demo-data: ${APP_SEED_DEMO_DATA:false}
   jwt:
     issuer: ${APP_JWT_ISSUER:link-vault-api}
-    secret: ${APP_JWT_SECRET:dev-only-change-this-secret-before-production-please-32-chars}
+    secret: ${APP_JWT_SECRET:${random.uuid}${random.uuid}}
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:120}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}

@@ -1,8 +1,10 @@
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
-  data: T;
-  errors?: unknown;
+  data: T | null;
+  errorCode?: string | null;
+  details?: unknown;
+  timestamp: string;
 }
 
 export interface HealthData {

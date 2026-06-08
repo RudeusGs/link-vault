@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
-import { LinkPreview, Resource } from '../../core/models/resource.model';
+import { LinkPreview, Resource } from './models/resource.model';
 
 @Component({
   selector: 'app-link-preview-card',

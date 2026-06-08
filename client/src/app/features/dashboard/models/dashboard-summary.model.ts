@@ -1,5 +1,5 @@
-import { Resource } from './resource.model';
-import { Tag } from './tag.model';
+import { Resource } from '../../resources/models/resource.model';
+import { Tag } from '../../tags/models/tag.model';
 
 export interface DashboardSummary {
   totalVaults: number;

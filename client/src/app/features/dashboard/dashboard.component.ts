@@ -2,8 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { DashboardSummary } from '../../core/models/dashboard-summary.model';
-import { DashboardService } from '../../core/services/dashboard.service';
+import { DashboardService } from './data-access/dashboard.service';
+import { DashboardSummary } from './models/dashboard-summary.model';
 
 @Component({
   selector: 'app-dashboard',

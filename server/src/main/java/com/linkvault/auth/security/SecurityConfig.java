@@ -1,6 +1,7 @@
 package com.linkvault.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.response.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -48,12 +49,14 @@ public class SecurityConfig {
                 .authenticationEntryPoint((request, response, authException) -> writeError(
                     response,
                     HttpStatus.UNAUTHORIZED,
-                    "Login required"
+                    "Login required",
+                    ErrorCode.AUTH_LOGIN_REQUIRED
                 ))
                 .accessDeniedHandler((request, response, accessDeniedException) -> writeError(
                     response,
                     HttpStatus.FORBIDDEN,
-                    "You do not have permission to access this resource"
+                    "You do not have permission to access this resource",
+                    ErrorCode.AUTH_ACCESS_DENIED
                 ))
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -65,9 +68,14 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    private void writeError(HttpServletResponse response, HttpStatus status, String message) throws java.io.IOException {
+    private void writeError(
+        HttpServletResponse response,
+        HttpStatus status,
+        String message,
+        ErrorCode errorCode
+    ) throws java.io.IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(), ApiResponse.failure(message, null));
+        objectMapper.writeValue(response.getWriter(), ApiResponse.failure(message, errorCode));
     }
 }

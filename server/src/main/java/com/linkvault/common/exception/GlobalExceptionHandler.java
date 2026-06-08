@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
+    
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Map<String, String>> handleValidation(MethodArgumentNotValidException exception) {
@@ -44,54 +44,60 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleBadRequest(BadRequestException exception) {
-        return ApiResponse.failure(exception.getMessage(), null);
+        return ApiResponse.failure(exception.getMessage(), exception.getErrorCode());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleUnreadableMessage(HttpMessageNotReadableException exception) {
-        return ApiResponse.failure("Invalid request body", null);
+        return ApiResponse.failure("Invalid request body", ErrorCode.BAD_REQUEST);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
-        return ApiResponse.failure("Invalid value for parameter: " + exception.getName(), null);
+        return ApiResponse.failure("Invalid value for parameter: " + exception.getName(), ErrorCode.BAD_REQUEST);
     }
 
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiResponse<Void> handleNotFound(NotFoundException exception) {
-        return ApiResponse.failure(exception.getMessage(), null);
+        return ApiResponse.failure(exception.getMessage(), exception.getErrorCode());
     }
 
     @ExceptionHandler(StorageException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleStorage(StorageException exception) {
-        return ApiResponse.failure(exception.getMessage(), null);
+        return ApiResponse.failure(exception.getMessage(), exception.getErrorCode());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleMaxUploadSize(MaxUploadSizeExceededException exception) {
-        return ApiResponse.failure("Uploaded file is larger than 20MB", null);
+        return ApiResponse.failure("Uploaded file is larger than 20MB", ErrorCode.STORAGE_UPLOAD_FAILED);
     }
 
     @ExceptionHandler(UnauthorizedException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse<Void> handleUnauthorized(UnauthorizedException exception) {
-        return ApiResponse.failure(exception.getMessage(), null);
+        return ApiResponse.failure(exception.getMessage(), exception.getErrorCode());
     }
 
-    @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
+    @ExceptionHandler(ForbiddenException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ApiResponse<Void> handleForbidden(RuntimeException exception) {
-        return ApiResponse.failure(exception.getMessage(), null);
+    public ApiResponse<Void> handleForbidden(ForbiddenException exception) {
+        return ApiResponse.failure(exception.getMessage(), exception.getErrorCode());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiResponse<Void> handleAccessDenied(AccessDeniedException exception) {
+        return ApiResponse.failure("You do not have permission to access this resource", ErrorCode.AUTH_ACCESS_DENIED);
     }
 
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleRuntime(RuntimeException exception) {
-        return ApiResponse.failure("Internal server error", null);
+        return ApiResponse.failure("Internal server error", ErrorCode.INTERNAL_ERROR);
     }
 }

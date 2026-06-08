@@ -1,12 +1,12 @@
 package com.linkvault.folders;
 
 import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.resources.Resource;
+import com.linkvault.resources.ResourceCleanupService;
 import com.linkvault.resources.ResourceRepository;
-import com.linkvault.resources.ResourceTagRepository;
-import com.linkvault.resources.ResourceViewRepository;
 import com.linkvault.users.UserContextService;
 import com.linkvault.vaults.Vault;
 import com.linkvault.vaults.VaultService;
@@ -20,23 +20,20 @@ public class FolderService {
 
     private final FolderRepository folderRepository;
     private final ResourceRepository resourceRepository;
-    private final ResourceTagRepository resourceTagRepository;
-    private final ResourceViewRepository resourceViewRepository;
+    private final ResourceCleanupService resourceCleanupService;
     private final VaultService vaultService;
     private final UserContextService userContextService;
 
     public FolderService(
         FolderRepository folderRepository,
         ResourceRepository resourceRepository,
-        ResourceTagRepository resourceTagRepository,
-        ResourceViewRepository resourceViewRepository,
+        ResourceCleanupService resourceCleanupService,
         VaultService vaultService,
         UserContextService userContextService
     ) {
         this.folderRepository = folderRepository;
         this.resourceRepository = resourceRepository;
-        this.resourceTagRepository = resourceTagRepository;
-        this.resourceViewRepository = resourceViewRepository;
+        this.resourceCleanupService = resourceCleanupService;
         this.vaultService = vaultService;
         this.userContextService = userContextService;
     }
@@ -97,7 +94,7 @@ public class FolderService {
     @Transactional(readOnly = true)
     public Folder getFolder(UUID id) {
         Folder folder = folderRepository.findById(id)
-            .orElseThrow(() -> new NotFoundException("Folder not found"));
+            .orElseThrow(() -> new NotFoundException(ErrorCode.FOLDER_NOT_FOUND, "Folder not found"));
         ensureOwner(folder);
         return folder;
     }
@@ -148,7 +145,7 @@ public class FolderService {
     private void ensureOwner(Folder folder) {
         UUID currentUserId = userContextService.getCurrentUser().getId();
         if (!folder.getVault().getUser().getId().equals(currentUserId)) {
-            throw new ForbiddenException("You do not have access to this folder");
+            throw new ForbiddenException(ErrorCode.FOLDER_ACCESS_DENIED, "You do not have access to this folder");
         }
     }
 
@@ -157,11 +154,8 @@ public class FolderService {
             deleteFolderTree(child);
         }
 
-        for (Resource resource : resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId())) {
-            resourceTagRepository.deleteByResource_Id(resource.getId());
-            resourceViewRepository.deleteByResource_Id(resource.getId());
-        }
-        resourceRepository.deleteAll(resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId()));
+        List<Resource> resources = resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId());
+        resourceCleanupService.deleteAll(resources);
         folderRepository.delete(folder);
     }
 

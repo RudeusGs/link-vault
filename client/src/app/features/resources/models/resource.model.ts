@@ -1,4 +1,4 @@
-import { Tag } from './tag.model';
+import { Tag } from '../../tags/models/tag.model';
 
 export type ResourceType = 'LINK' | 'FILE' | 'NOTE' | 'SNIPPET';
 

@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
@@ -19,7 +20,11 @@ import lombok.Setter;
 @NoArgsConstructor
 @Table(
     name = "tags",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"})
+    uniqueConstraints = @UniqueConstraint(name = "uk_tags_user_name", columnNames = {"user_id", "name"}),
+    indexes = {
+        @Index(name = "idx_tags_user", columnList = "user_id"),
+        @Index(name = "idx_tags_created_at", columnList = "created_at")
+    }
 )
 public class Tag extends BaseEntity {
 

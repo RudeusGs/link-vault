@@ -1,0 +1,11 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+app:
+  seed-demo-data: false
+  jwt:
+    secret: ${APP_JWT_SECRET}

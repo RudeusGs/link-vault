@@ -12,6 +12,8 @@ LinkVault is a full-stack personal resource vault for organizing links, document
 - Professional folder tree that displays folders and contained resources with file-type icons.
 - Tags, favorites, archive actions, full search/filter flow, and dashboard summary.
 - JWT authentication, per-user ownership checks, CORS configuration, and structured API responses.
+- Consistent API response envelope with `success`, `message`, `data`, `errorCode`, `details`, and `timestamp`.
+- Flyway-managed initial schema with UUID primary keys, foreign keys, unique constraints, and query indexes.
 - Docker Compose setup for client, server, PostgreSQL, and pgAdmin.
 
 ## Tech Stack
@@ -31,18 +33,22 @@ LinkVault is a full-stack personal resource vault for organizing links, document
 ```text
 link-vault/
 ├── client/                 # Angular SPA served by Nginx in Docker
-│   ├── src/app/core        # Shared models and API services
-│   ├── src/app/features    # Auth, dashboard, vaults, folders, resources, tags
+│   ├── src/app/core        # Auth state, guards, interceptors, HTTP client
+│   ├── src/app/shared      # Shared API/error models
+│   ├── src/app/features    # Feature data-access, models, route components
 │   └── nginx.conf          # SPA routing and /api reverse proxy
 ├── server/                 # Spring Boot REST API
 │   ├── src/main/java/com/linkvault
-│   │   ├── auth            # JWT authentication
+│   │   ├── auth            # JWT authentication and auth use cases
+│   │   ├── common          # Response contract, error codes, config, pagination
 │   │   ├── dashboard       # Summary and health endpoints
 │   │   ├── folders         # Nested folder management
-│   │   ├── resources       # Resource CRUD, previews, uploads
+│   │   ├── resources       # Resource CRUD, search, mapping, previews, cleanup
 │   │   ├── storage         # Cloudinary integration
 │   │   ├── tags            # Tag management
 │   │   └── vaults          # Vault management
+│   ├── src/main/resources/db/migration
+│   │   └── V1__initial_schema.sql
 │   └── src/test            # Backend test configuration
 ├── database/               # Optional PostgreSQL init scripts
 ├── docker-compose.yml      # Local production-like stack
@@ -128,6 +134,8 @@ cp .env.example .env
 POSTGRES_PASSWORD=change-me
 PGADMIN_PASSWORD=change-me
 APP_JWT_SECRET=replace-with-a-long-random-secret-at-least-32-chars
+SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+SPRING_FLYWAY_ENABLED=true
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
@@ -208,10 +216,13 @@ http://localhost:8080/api
 | `PGADMIN_EMAIL` | pgAdmin login email | `admin@linkvault.dev` |
 | `PGADMIN_PASSWORD` | pgAdmin login password | `admin123` |
 | `APP_JWT_ISSUER` | JWT issuer | `link-vault-api` |
-| `APP_JWT_SECRET` | JWT signing secret | development fallback |
+| `APP_JWT_SECRET` | JWT signing secret | required for Docker/prod |
 | `APP_JWT_EXPIRATION_MINUTES` | Token lifetime in minutes | `120` |
 | `APP_SEED_DEMO_DATA` | Seed demo data on startup | `false` |
 | `APP_CORS_ALLOWED_ORIGINS` | Allowed browser origins | `http://localhost:4200,http://127.0.0.1:4200` |
+| `SPRING_JPA_HIBERNATE_DDL_AUTO` | Hibernate schema mode | `validate` |
+| `SPRING_FLYWAY_ENABLED` | Enable Flyway migrations | `true` |
+| `SPRING_FLYWAY_BASELINE_ON_MIGRATE` | Baseline existing non-empty dev schemas | `true` |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | empty |
 | `CLOUDINARY_API_KEY` | Cloudinary API key | empty |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret | empty |
@@ -240,6 +251,31 @@ Swagger UI is available at:
 ```text
 http://localhost:8080/swagger-ui.html
 ```
+
+API responses use one envelope for success and errors:
+
+```json
+{
+  "success": true,
+  "message": "Resources loaded",
+  "data": {},
+  "errorCode": null,
+  "details": null,
+  "timestamp": "2026-06-08T00:00:00Z"
+}
+```
+
+Errors return `success: false` with an `errorCode` such as `AUTH_INVALID_CREDENTIALS`, `RESOURCE_NOT_FOUND`, `VAULT_ACCESS_DENIED`, `VALIDATION_ERROR`, or `STORAGE_UPLOAD_FAILED`.
+
+## Database Migrations
+
+Flyway runs migrations from:
+
+```text
+server/src/main/resources/db/migration
+```
+
+The initial migration creates users, vaults, folders, resources, tags, resource tag links, and resource view history with UUID primary keys, foreign keys, and indexes for common ownership/filter queries. Existing non-empty development schemas can be baselined with `SPRING_FLYWAY_BASELINE_ON_MIGRATE=true`; production deployments should keep `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`.
 
 ## Quality Checks
 
@@ -283,7 +319,7 @@ docker compose build
 
 ## Security Notes
 
-- JWT secrets must be replaced before any real deployment.
+- JWT secrets must be provided through `APP_JWT_SECRET` before Docker/prod startup.
 - File preview is served through backend-controlled endpoints instead of exposing raw storage access in the UI.
 - Link preview fetching validates URL scheme and blocks local/private network targets.
 - Cloudinary credentials should be provided through environment variables and never committed.
