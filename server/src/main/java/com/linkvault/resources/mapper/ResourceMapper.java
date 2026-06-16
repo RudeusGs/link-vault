@@ -13,6 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import com.linkvault.common.pagination.PageResponse;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -35,6 +37,12 @@ public class ResourceMapper {
         return resources.stream()
             .map(resource -> toResponse(resource, tagsByResourceId))
             .toList();
+    }
+
+    public PageResponse<ResourceResponse> toPageResponse(Page<Resource> page) {
+        Map<UUID, List<TagResponse>> tagsByResourceId = tagsByResourceId(page.getContent());
+        Page<ResourceResponse> responsePage = page.map(resource -> toResponse(resource, tagsByResourceId));
+        return PageResponse.from(responsePage);
     }
 
     private ResourceResponse toResponse(Resource resource, Map<UUID, List<TagResponse>> tagsByResourceId) {

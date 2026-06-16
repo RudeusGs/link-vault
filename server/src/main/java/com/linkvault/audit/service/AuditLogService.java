@@ -8,11 +8,16 @@ import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.service.PermissionService;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuditLogService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditLogService.class);
 
     private final AuditLogRepository auditLogRepository;
     private final PermissionService permissionService;
@@ -22,10 +27,12 @@ public class AuditLogService {
         this.permissionService = permissionService;
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(Workspace workspace, User actor, String action, String targetType, UUID targetId) {
         record(workspace, actor, action, targetType, targetId, null);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(
         Workspace workspace,
         User actor,
@@ -43,7 +50,8 @@ public class AuditLogService {
             auditLog.setTargetId(targetId);
             auditLog.setMetadata(metadata);
             auditLogRepository.save(auditLog);
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException exception) {
+            log.error("Failed to record audit log: action={}, targetType={}, targetId={}", action, targetType, targetId, exception);
         }
     }
 

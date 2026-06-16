@@ -11,6 +11,7 @@ import com.linkvault.resources.dto.LinkPreviewResponse;
 import com.linkvault.resources.dto.ResourceFileContent;
 import com.linkvault.resources.dto.ResourcePreviewResponse;
 import com.linkvault.resources.dto.ResourceRequest;
+import com.linkvault.common.pagination.PageResponse;
 import com.linkvault.resources.dto.ResourceResponse;
 import com.linkvault.resources.entity.Resource;
 import com.linkvault.resources.entity.ResourceTag;
@@ -95,55 +96,56 @@ public class ResourceService {
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> listAll() {
-        return search(null, null, null, null, null, null, null);
+    public PageResponse<ResourceResponse> listAll(org.springframework.data.domain.Pageable pageable) {
+        return search(null, null, null, null, null, null, null, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> listByVault(UUID vaultId) {
+    public PageResponse<ResourceResponse> listByVault(UUID vaultId, org.springframework.data.domain.Pageable pageable) {
         vaultService.getVault(vaultId);
-        return resourceMapper.toResponses(resourceRepository.findByVault_IdOrderByCreatedAtDesc(vaultId));
+        return resourceMapper.toPageResponse(resourceRepository.findByVault_Id(vaultId, pageable));
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> listByVault(UUID workspaceId, UUID vaultId) {
+    public PageResponse<ResourceResponse> listByVault(UUID workspaceId, UUID vaultId, org.springframework.data.domain.Pageable pageable) {
         vaultService.getVault(workspaceId, vaultId);
-        return resourceMapper.toResponses(
-            resourceRepository.findByVault_IdAndVault_Workspace_IdOrderByCreatedAtDesc(vaultId, workspaceId)
+        return resourceMapper.toPageResponse(
+            resourceRepository.findByVault_IdAndVault_Workspace_Id(vaultId, workspaceId, pageable)
         );
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> listByFolder(UUID folderId) {
+    public PageResponse<ResourceResponse> listByFolder(UUID folderId, org.springframework.data.domain.Pageable pageable) {
         Folder folder = folderService.getFolder(folderId);
-        return resourceMapper.toResponses(resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId()));
+        return resourceMapper.toPageResponse(resourceRepository.findByFolder_Id(folder.getId(), pageable));
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> listByFolder(UUID workspaceId, UUID folderId) {
+    public PageResponse<ResourceResponse> listByFolder(UUID workspaceId, UUID folderId, org.springframework.data.domain.Pageable pageable) {
         Folder folder = folderService.getFolder(workspaceId, folderId);
-        return resourceMapper.toResponses(
-            resourceRepository.findByFolder_IdAndVault_Workspace_IdOrderByCreatedAtDesc(folder.getId(), workspaceId)
+        return resourceMapper.toPageResponse(
+            resourceRepository.findByFolder_IdAndVault_Workspace_Id(folder.getId(), workspaceId, pageable)
         );
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> search(
+    public PageResponse<ResourceResponse> search(
         String keyword,
         ResourceType type,
         UUID tagId,
         UUID vaultId,
         UUID folderId,
         Boolean rootOnly,
-        Boolean favorite
+        Boolean favorite,
+        org.springframework.data.domain.Pageable pageable
     ) {
-        return resourceMapper.toResponses(
-            resourceSearchService.search(keyword, type, tagId, vaultId, folderId, rootOnly, favorite)
+        return resourceMapper.toPageResponse(
+            resourceSearchService.search(keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
         );
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> search(
+    public PageResponse<ResourceResponse> search(
         UUID workspaceId,
         String keyword,
         ResourceType type,
@@ -151,10 +153,11 @@ public class ResourceService {
         UUID vaultId,
         UUID folderId,
         Boolean rootOnly,
-        Boolean favorite
+        Boolean favorite,
+        org.springframework.data.domain.Pageable pageable
     ) {
-        return resourceMapper.toResponses(
-            resourceSearchService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite)
+        return resourceMapper.toPageResponse(
+            resourceSearchService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
         );
     }
 
@@ -523,22 +526,32 @@ public class ResourceService {
         quotaService.requireCanUpload(vault.getWorkspace(), file.getSize());
         StorageResult storage = storageService.upload(file);
 
-        Resource resource = new Resource();
-        resource.setVault(vault);
-        resource.setFolder(folder);
-        resource.setTitle(resolveTitle(title, storage.originalFilename()));
-        resource.setDescription(trimToNull(description));
-        resource.setResourceType(ResourceType.FILE);
-        resource.setFileUrl(storage.secureUrl() == null ? storage.url() : storage.secureUrl());
-        resource.setFileName(storage.originalFilename());
-        resource.setFileSize(storage.size());
-        resource.setMimeType(storage.mimeType());
-        resource.setStorageProvider("CLOUDINARY");
-        resource.setStorageKey(storage.publicId());
+        try {
+            Resource resource = new Resource();
+            resource.setVault(vault);
+            resource.setFolder(folder);
+            resource.setTitle(resolveTitle(title, storage.originalFilename()));
+            resource.setDescription(trimToNull(description));
+            resource.setResourceType(ResourceType.FILE);
+            resource.setFileUrl(storage.secureUrl() == null ? storage.url() : storage.secureUrl());
+            resource.setFileName(storage.originalFilename());
+            resource.setFileSize(storage.size());
+            resource.setMimeType(storage.mimeType());
+            resource.setStorageProvider("CLOUDINARY");
+            resource.setStorageKey(storage.publicId());
 
-        Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.uploaded", "RESOURCE", savedResource.getId());
-        return resourceMapper.toResponse(savedResource);
+            Resource savedResource = resourceRepository.save(resource);
+            auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.uploaded", "RESOURCE", savedResource.getId());
+            return resourceMapper.toResponse(savedResource);
+        } catch (RuntimeException exception) {
+            try {
+                storageService.delete(storage.publicId());
+            } catch (Exception cleanupException) {
+                org.slf4j.LoggerFactory.getLogger(ResourceService.class)
+                    .error("Failed to clean up storage file after DB save failure: " + storage.publicId(), cleanupException);
+            }
+            throw exception;
+        }
     }
 
     private void applyRequest(Resource resource, ResourceRequest request, Vault vault, Folder folder) {
@@ -568,8 +581,17 @@ public class ResourceService {
             throw new BadRequestException("Content is required for note resources");
         }
 
-        if (request.resourceType() == ResourceType.SNIPPET && isBlank(request.content())) {
-            throw new BadRequestException("Content is required for snippet resources");
+        if (request.resourceType() == ResourceType.SNIPPET) {
+            if (isBlank(request.content())) {
+                throw new BadRequestException("Content is required for snippet resources");
+            }
+            if (isBlank(request.codeLanguage())) {
+                throw new BadRequestException("Code language is required for snippet resources");
+            }
+        }
+
+        if (request.resourceType() == ResourceType.FILE) {
+            throw new BadRequestException("File resources cannot be created or updated via this endpoint");
         }
     }
 

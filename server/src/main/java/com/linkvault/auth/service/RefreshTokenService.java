@@ -92,6 +92,7 @@ public class RefreshTokenService {
             .orElseThrow(() -> new UnauthorizedException(ErrorCode.REFRESH_TOKEN_INVALID, "Refresh token is invalid"));
 
         if (refreshToken.getRevokedAt() != null) {
+            revokeAllUserSessions(refreshToken.getUser());
             throw new UnauthorizedException(ErrorCode.REFRESH_TOKEN_INVALID, "Refresh token has been revoked");
         }
 
@@ -100,6 +101,14 @@ public class RefreshTokenService {
         }
 
         return refreshToken;
+    }
+
+    private void revokeAllUserSessions(User user) {
+        List<RefreshToken> activeTokens = refreshTokenRepository.findByUser_IdOrderByCreatedAtDesc(user.getId()).stream()
+            .filter(token -> token.getRevokedAt() == null)
+            .toList();
+        activeTokens.forEach(token -> token.setRevokedAt(Instant.now()));
+        refreshTokenRepository.saveAll(activeTokens);
     }
 
     private UserSessionResponse toResponse(RefreshToken refreshToken) {
