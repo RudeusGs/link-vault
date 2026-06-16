@@ -89,6 +89,12 @@ public class GlobalExceptionHandler {
         return ApiResponse.failure(exception.getMessage(), exception.getErrorCode());
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public ApiResponse<Void> handleTooManyRequests(TooManyRequestsException exception) {
+        return ApiResponse.failure(exception.getMessage(), exception.getErrorCode());
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiResponse<Void> handleAccessDenied(AccessDeniedException exception) {

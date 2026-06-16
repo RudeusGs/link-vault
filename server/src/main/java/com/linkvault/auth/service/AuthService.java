@@ -2,9 +2,8 @@ package com.linkvault.auth.service;
 
 import com.linkvault.auth.dto.AuthAvailabilityResponse;
 import com.linkvault.auth.dto.AuthResponse;
+import com.linkvault.auth.dto.AuthResult;
 import com.linkvault.auth.dto.LoginRequest;
-import com.linkvault.auth.dto.LogoutRequest;
-import com.linkvault.auth.dto.RefreshTokenRequest;
 import com.linkvault.auth.dto.RegisterRequest;
 import com.linkvault.auth.dto.UserResponse;
 import com.linkvault.auth.dto.UserSessionResponse;
@@ -51,12 +50,12 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResult register(RegisterRequest request) {
         return register(request, null, null);
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request, String userAgent, String ipAddress) {
+    public AuthResult register(RegisterRequest request, String userAgent, String ipAddress) {
         String email = normalizeEmail(request.email());
         String username = normalizeUsername(request.username());
 
@@ -80,16 +79,16 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         workspaceService.createDefaultWorkspaceForUser(savedUser);
-        return toAuthResponse(savedUser, refreshTokenService.createForUser(savedUser, userAgent, ipAddress));
+        return toAuthResult(savedUser, refreshTokenService.createForUser(savedUser, userAgent, ipAddress));
     }
 
     @Transactional
-    public AuthResponse login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
         return login(request, null, null);
     }
 
     @Transactional
-    public AuthResponse login(LoginRequest request, String userAgent, String ipAddress) {
+    public AuthResult login(LoginRequest request, String userAgent, String ipAddress) {
         String username = normalizeUsername(request.username());
         User user = userRepository.findByUsernameIgnoreCase(username)
             .orElseThrow(() -> new UnauthorizedException(
@@ -107,18 +106,20 @@ public class AuthService {
 
         user.setLastLoginAt(Instant.now());
         User savedUser = userRepository.save(user);
-        return toAuthResponse(savedUser, refreshTokenService.createForUser(savedUser, userAgent, ipAddress));
+        return toAuthResult(savedUser, refreshTokenService.createForUser(savedUser, userAgent, ipAddress));
     }
 
     @Transactional
-    public AuthResponse refresh(RefreshTokenRequest request, String userAgent, String ipAddress) {
-        RefreshTokenResult result = refreshTokenService.rotate(request.refreshToken(), userAgent, ipAddress);
-        return toAuthResponse(result.user(), result.refreshToken());
+    public AuthResult refresh(String refreshToken, String userAgent, String ipAddress) {
+        RefreshTokenResult result = refreshTokenService.rotate(refreshToken, userAgent, ipAddress);
+        return toAuthResult(result.user(), result.refreshToken());
     }
 
     @Transactional
-    public void logout(LogoutRequest request) {
-        refreshTokenService.revoke(request.refreshToken());
+    public void logout(String refreshToken) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            refreshTokenService.revoke(refreshToken);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -157,14 +158,14 @@ public class AuthService {
         );
     }
 
-    private AuthResponse toAuthResponse(User user, String refreshToken) {
-        return new AuthResponse(
+    private AuthResult toAuthResult(User user, String refreshToken) {
+        AuthResponse response = new AuthResponse(
             jwtService.generateAccessToken(user),
             "Bearer",
             jwtService.expiresInSeconds(),
-            toUserResponse(user),
-            refreshToken
+            toUserResponse(user)
         );
+        return new AuthResult(response, refreshToken);
     }
 
     private String resolveDisplayName(String displayName, String username) {
