@@ -14,7 +14,10 @@ import org.springframework.web.context.WebApplicationContext;
 import org.junit.jupiter.api.BeforeEach;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
+import org.springframework.test.context.ActiveProfiles;
+
 @SpringBootTest
+@ActiveProfiles("test")
 class SecurityConfigTest {
 
     @Autowired

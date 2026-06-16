@@ -136,8 +136,7 @@ public class WorkspaceService {
             throw new BadRequestException("You cannot delete your last workspace");
         }
 
-        workspace.setDeletedAt(Instant.now());
-        workspaceRepository.save(workspace);
+        workspaceRepository.delete(workspace);
         auditLogService.record(workspace, user, "workspace.deleted", "WORKSPACE", workspace.getId());
     }
 
@@ -216,8 +215,7 @@ public class WorkspaceService {
         ensureCanManageMember(actorMember, target, target.getRole());
         ensureNotLastOwnerRemoval(target);
 
-        target.setDeletedAt(Instant.now());
-        workspaceMemberRepository.save(target);
+        workspaceMemberRepository.delete(target);
         auditLogService.record(target.getWorkspace(), actor, "member.removed", "WORKSPACE_MEMBER", target.getId());
     }
 

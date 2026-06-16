@@ -16,6 +16,8 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Getter
 @Setter
@@ -33,6 +35,8 @@ import lombok.Setter;
         @Index(name = "idx_workspace_members_role", columnList = "role")
     }
 )
+@SQLDelete(sql = "UPDATE workspace_members SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class WorkspaceMember extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

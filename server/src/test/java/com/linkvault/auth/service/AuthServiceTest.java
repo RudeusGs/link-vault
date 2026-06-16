@@ -1,7 +1,7 @@
 package com.linkvault.auth.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.linkvault.auth.dto.AuthResponse;
+import com.linkvault.auth.dto.AuthResult;
 import com.linkvault.auth.dto.LoginRequest;
 import com.linkvault.auth.dto.RegisterRequest;
 import com.linkvault.auth.security.JwtProperties;
@@ -52,7 +52,7 @@ class AuthServiceTest {
             return user;
         });
 
-        AuthResponse response = authService.register(new RegisterRequest(
+        AuthResult result = authService.register(new RegisterRequest(
             " Ada@Example.COM ",
             "secret-password",
             " ADA ",
@@ -60,11 +60,11 @@ class AuthServiceTest {
             null
         ));
 
-        assertThat(response.tokenType()).isEqualTo("Bearer");
-        assertThat(response.accessToken()).isNotBlank();
-        assertThat(response.refreshToken()).isEqualTo("refresh-token");
-        assertThat(response.user().username()).isEqualTo("ada");
-        assertThat(response.user().email()).isEqualTo("ada@example.com");
+        assertThat(result.response().tokenType()).isEqualTo("Bearer");
+        assertThat(result.response().accessToken()).isNotBlank();
+        assertThat(result.refreshToken()).isEqualTo("refresh-token");
+        assertThat(result.response().user().username()).isEqualTo("ada");
+        assertThat(result.response().user().email()).isEqualTo("ada@example.com");
         verify(workspaceService).createDefaultWorkspaceForUser(any(User.class));
     }
 
