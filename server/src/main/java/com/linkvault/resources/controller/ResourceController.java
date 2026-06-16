@@ -12,7 +12,7 @@ import com.linkvault.resources.enums.ResourceType;
 import com.linkvault.resources.service.LinkPreviewService;
 import com.linkvault.resources.service.ResourceService;
 import jakarta.validation.Valid;
-import java.util.List;
+import com.linkvault.common.pagination.PageResponse;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
@@ -42,12 +42,12 @@ public class ResourceController {
     }
 
     @GetMapping("/api/resources")
-    public ApiResponse<List<ResourceResponse>> list() {
-        return ApiResponse.success("Resources loaded", resourceService.listAll());
+    public ApiResponse<PageResponse<ResourceResponse>> list(@org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable) {
+        return ApiResponse.success("Resources loaded", resourceService.listAll(pageable));
     }
 
     @GetMapping("/api/workspaces/{workspaceId}/resources")
-    public ApiResponse<List<ResourceResponse>> listByWorkspace(
+    public ApiResponse<PageResponse<ResourceResponse>> listByWorkspace(
         @PathVariable UUID workspaceId,
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) ResourceType type,
@@ -55,58 +55,68 @@ public class ResourceController {
         @RequestParam(required = false) UUID vaultId,
         @RequestParam(required = false) UUID folderId,
         @RequestParam(required = false) Boolean rootOnly,
-        @RequestParam(required = false) Boolean favorite
+        @RequestParam(required = false) Boolean favorite,
+        @org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable
     ) {
         return ApiResponse.success(
             "Resources loaded",
-            resourceService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite)
+            resourceService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
         );
     }
 
     @GetMapping("/api/vaults/{vaultId}/resources")
-    public ApiResponse<List<ResourceResponse>> listByVault(@PathVariable UUID vaultId) {
-        return ApiResponse.success("Resources loaded", resourceService.listByVault(vaultId));
+    public ApiResponse<PageResponse<ResourceResponse>> listByVault(
+        @PathVariable UUID vaultId,
+        @org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable
+    ) {
+        return ApiResponse.success("Resources loaded", resourceService.listByVault(vaultId, pageable));
     }
 
     @GetMapping("/api/workspaces/{workspaceId}/vaults/{vaultId}/resources")
-    public ApiResponse<List<ResourceResponse>> listByWorkspaceVault(
+    public ApiResponse<PageResponse<ResourceResponse>> listByWorkspaceVault(
         @PathVariable UUID workspaceId,
-        @PathVariable UUID vaultId
+        @PathVariable UUID vaultId,
+        @org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable
     ) {
-        return ApiResponse.success("Resources loaded", resourceService.listByVault(workspaceId, vaultId));
+        return ApiResponse.success("Resources loaded", resourceService.listByVault(workspaceId, vaultId, pageable));
     }
 
     @GetMapping("/api/folders/{folderId}/resources")
-    public ApiResponse<List<ResourceResponse>> listByFolder(@PathVariable UUID folderId) {
-        return ApiResponse.success("Resources loaded", resourceService.listByFolder(folderId));
+    public ApiResponse<PageResponse<ResourceResponse>> listByFolder(
+        @PathVariable UUID folderId,
+        @org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable
+    ) {
+        return ApiResponse.success("Resources loaded", resourceService.listByFolder(folderId, pageable));
     }
 
     @GetMapping("/api/workspaces/{workspaceId}/folders/{folderId}/resources")
-    public ApiResponse<List<ResourceResponse>> listByWorkspaceFolder(
+    public ApiResponse<PageResponse<ResourceResponse>> listByWorkspaceFolder(
         @PathVariable UUID workspaceId,
-        @PathVariable UUID folderId
+        @PathVariable UUID folderId,
+        @org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable
     ) {
-        return ApiResponse.success("Resources loaded", resourceService.listByFolder(workspaceId, folderId));
+        return ApiResponse.success("Resources loaded", resourceService.listByFolder(workspaceId, folderId, pageable));
     }
 
     @GetMapping("/api/resources/search")
-    public ApiResponse<List<ResourceResponse>> search(
+    public ApiResponse<PageResponse<ResourceResponse>> search(
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) ResourceType type,
         @RequestParam(required = false) UUID tagId,
         @RequestParam(required = false) UUID vaultId,
         @RequestParam(required = false) UUID folderId,
         @RequestParam(required = false) Boolean rootOnly,
-        @RequestParam(required = false) Boolean favorite
+        @RequestParam(required = false) Boolean favorite,
+        @org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable
     ) {
         return ApiResponse.success(
             "Resources loaded",
-            resourceService.search(keyword, type, tagId, vaultId, folderId, rootOnly, favorite)
+            resourceService.search(keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
         );
     }
 
     @GetMapping("/api/workspaces/{workspaceId}/resources/search")
-    public ApiResponse<List<ResourceResponse>> searchInWorkspace(
+    public ApiResponse<PageResponse<ResourceResponse>> searchInWorkspace(
         @PathVariable UUID workspaceId,
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) ResourceType type,
@@ -114,11 +124,12 @@ public class ResourceController {
         @RequestParam(required = false) UUID vaultId,
         @RequestParam(required = false) UUID folderId,
         @RequestParam(required = false) Boolean rootOnly,
-        @RequestParam(required = false) Boolean favorite
+        @RequestParam(required = false) Boolean favorite,
+        @org.springdoc.core.annotations.ParameterObject org.springframework.data.domain.Pageable pageable
     ) {
         return ApiResponse.success(
             "Resources loaded",
-            resourceService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite)
+            resourceService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
         );
     }
 

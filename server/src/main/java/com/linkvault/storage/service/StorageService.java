@@ -9,4 +9,6 @@ public interface StorageService {
     StorageResult upload(MultipartFile file);
 
     StorageFile download(String url);
+
+    void delete(String storageKey);
 }

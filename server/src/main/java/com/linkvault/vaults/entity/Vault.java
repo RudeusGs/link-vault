@@ -15,6 +15,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
 @Getter
 @Setter
 @Entity
@@ -28,6 +31,8 @@ import lombok.Setter;
         @Index(name = "idx_vaults_created_at", columnList = "created_at")
     }
 )
+@SQLDelete(sql = "UPDATE vaults SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class Vault extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

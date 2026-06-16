@@ -102,6 +102,20 @@ public class CloudinaryStorageService implements StorageService {
         }
     }
 
+    @Override
+    public void delete(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            return;
+        }
+        try {
+            cloudinary.uploader().destroy(storageKey, ObjectUtils.emptyMap());
+        } catch (IOException exception) {
+            throw new StorageException("Could not delete file from storage", exception);
+        } catch (RuntimeException exception) {
+            throw new StorageException("Cloudinary delete failed", exception);
+        }
+    }
+
     private void validateFile(MultipartFile file) {
         if (!properties.hasCredentials()) {
             throw new StorageException("Cloudinary is not configured");

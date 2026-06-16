@@ -51,21 +51,22 @@ public class ResourceSearchService {
     }
 
     @Transactional(readOnly = true)
-    public List<Resource> search(
+    public org.springframework.data.domain.Page<Resource> search(
         String keyword,
         ResourceType type,
         UUID tagId,
         UUID vaultId,
         UUID folderId,
         Boolean rootOnly,
-        Boolean favorite
+        Boolean favorite,
+        org.springframework.data.domain.Pageable pageable
     ) {
         Workspace workspace = workspaceService.getDefaultWorkspaceForCurrentUser();
-        return search(workspace.getId(), keyword, type, tagId, vaultId, folderId, rootOnly, favorite);
+        return search(workspace.getId(), keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<Resource> search(
+    public org.springframework.data.domain.Page<Resource> search(
         UUID workspaceId,
         String keyword,
         ResourceType type,
@@ -73,7 +74,8 @@ public class ResourceSearchService {
         UUID vaultId,
         UUID folderId,
         Boolean rootOnly,
-        Boolean favorite
+        Boolean favorite,
+        org.springframework.data.domain.Pageable pageable
     ) {
         workspaceService.requireMember(workspaceId);
         Vault vault = vaultId == null ? null : vaultService.getVault(workspaceId, vaultId);
@@ -94,11 +96,54 @@ public class ResourceSearchService {
             vaultId,
             folderId,
             rootOnly,
-            favorite
+            favorite,
+            pageable
         );
     }
 
-    private List<Resource> searchResources(
+    private org.springframework.data.domain.Page<Resource> searchResources(
+        UUID workspaceId,
+        String keyword,
+        ResourceType type,
+        UUID tagId,
+        UUID vaultId,
+        UUID folderId,
+        Boolean rootOnly,
+        Boolean favorite,
+        org.springframework.data.domain.Pageable pageable
+    ) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Resource> query = cb.createQuery(Resource.class);
+        Root<Resource> resource = query.from(Resource.class);
+
+        resource.fetch("vault", JoinType.INNER);
+        resource.fetch("folder", JoinType.LEFT);
+
+        List<Predicate> predicates = buildPredicates(cb, query, resource, workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite);
+
+        query.select(resource)
+            .distinct(true)
+            .where(predicates.toArray(Predicate[]::new))
+            .orderBy(cb.desc(resource.get("createdAt")));
+
+        var typedQuery = entityManager.createQuery(query);
+        typedQuery.setFirstResult((int) pageable.getOffset());
+        typedQuery.setMaxResults(pageable.getPageSize());
+        List<Resource> results = typedQuery.getResultList();
+
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<Resource> countRoot = countQuery.from(Resource.class);
+        List<Predicate> countPredicates = buildPredicates(cb, countQuery, countRoot, workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite);
+        countQuery.select(cb.countDistinct(countRoot)).where(countPredicates.toArray(Predicate[]::new));
+        Long total = entityManager.createQuery(countQuery).getSingleResult();
+
+        return new org.springframework.data.domain.PageImpl<>(results, pageable, total);
+    }
+
+    private List<Predicate> buildPredicates(
+        CriteriaBuilder cb,
+        CriteriaQuery<?> query,
+        Root<Resource> resource,
         UUID workspaceId,
         String keyword,
         ResourceType type,
@@ -108,13 +153,6 @@ public class ResourceSearchService {
         Boolean rootOnly,
         Boolean favorite
     ) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Resource> query = cb.createQuery(Resource.class);
-        Root<Resource> resource = query.from(Resource.class);
-
-        resource.fetch("vault", JoinType.INNER);
-        resource.fetch("folder", JoinType.LEFT);
-
         Join<Resource, Vault> vault = resource.join("vault", JoinType.INNER);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(vault.get("workspace").<UUID>get("id"), workspaceId));
@@ -160,12 +198,7 @@ public class ResourceSearchService {
             predicates.add(cb.exists(tagSubquery));
         }
 
-        query.select(resource)
-            .distinct(true)
-            .where(predicates.toArray(Predicate[]::new))
-            .orderBy(cb.desc(resource.get("createdAt")));
-
-        return entityManager.createQuery(query).getResultList();
+        return predicates;
     }
 
     private String cleanKeyword(String keyword) {
