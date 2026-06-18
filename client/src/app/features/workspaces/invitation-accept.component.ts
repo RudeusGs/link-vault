@@ -1,58 +1,56 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { WorkspaceService } from '../settings/data-access/workspace.service';
+
 import { AuthService } from '../../core/auth/auth.service';
+import { WorkspaceService } from '../settings/data-access/workspace.service';
 
 @Component({
   selector: 'app-invitation-accept',
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="lv-auth-bg d-flex flex-column align-items-center justify-content-center py-5">
-      <div class="lv-auth-card p-4 p-md-5">
+    <main class="lv-auth-bg d-flex flex-column align-items-center justify-content-center py-5 px-3">
+      <section class="lv-auth-card p-4 p-md-5">
         <div class="text-center mb-4">
-          <a class="lv-brand text-decoration-none d-inline-flex align-items-center gap-2" routerLink="/">
-            <span class="material-symbols-outlined fs-2">lock</span>
-            LinkVault
+          <a class="lv-brand justify-content-center text-decoration-none" routerLink="/">
+            <span class="lv-brand-mark"><span class="material-symbols-outlined" style="font-size:18px">lock</span></span>
+            <span>LinkVault</span>
           </a>
         </div>
 
-        <div *ngIf="loading" class="text-center py-4">
-          <div class="spinner-border text-primary" role="status"></div>
-          <p class="mt-3 text-muted">Processing invitation...</p>
-        </div>
+        <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
-        <div *ngIf="!loading && error" class="text-center">
-          <span class="material-symbols-outlined text-danger mb-3" style="font-size: 48px;">error</span>
-          <h4 class="mb-3">Invalid or Expired Invitation</h4>
-          <p class="text-muted mb-4">{{ error }}</p>
-          <a routerLink="/dashboard" class="btn btn-primary w-100">Go to Dashboard</a>
-        </div>
-
-        <div *ngIf="!loading && success" class="text-center">
-          <span class="material-symbols-outlined text-success mb-3" style="font-size: 48px;">check_circle</span>
-          <h4 class="mb-3">Invitation Accepted!</h4>
-          <p class="text-muted mb-4">You have successfully joined the workspace.</p>
-          <a routerLink="/dashboard" class="btn btn-primary w-100">Go to Dashboard</a>
-        </div>
-
-        <div *ngIf="!loading && !error && !success" class="text-center">
-          <span class="material-symbols-outlined text-primary mb-3" style="font-size: 48px;">group_add</span>
-          <h4 class="mb-3">You've been invited!</h4>
-          <p class="text-muted mb-4">You have been invited to join a workspace.</p>
-          
-          <div class="d-flex gap-3 mt-4">
-            <button class="btn btn-outline-danger w-50" [disabled]="processing" (click)="decline()">Decline</button>
-            <button class="btn btn-primary w-50" [disabled]="processing" (click)="accept()">Accept Invitation</button>
+        <div class="text-center" *ngIf="!success">
+          <span class="lv-icon-box lv-icon-box-lg mx-auto mb-3">
+            <span class="material-symbols-outlined" style="font-size:28px">group_add</span>
+          </span>
+          <h1 class="lv-section-title mb-2">Workspace invitation</h1>
+          <p class="lv-muted mb-4">
+            Accepting this invite will add your current account to the workspace if the invite matches your username or email.
+          </p>
+          <div class="d-flex gap-2">
+            <button class="btn lv-button-quiet flex-fill" [disabled]="processing" type="button" (click)="decline()">Decline</button>
+            <button class="btn btn-primary flex-fill" [disabled]="processing" type="button" (click)="accept()">
+              <span *ngIf="processing" class="spinner-border spinner-border-sm me-2"></span>
+              Accept
+            </button>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div class="text-center" *ngIf="success">
+          <span class="lv-icon-box lv-icon-box-lg mx-auto mb-3">
+            <span class="material-symbols-outlined" style="font-size:28px">check_circle</span>
+          </span>
+          <h1 class="lv-section-title mb-2">You joined the workspace</h1>
+          <p class="lv-muted mb-4">The workspace is now active. You can open its vaults and resources immediately.</p>
+          <a routerLink="/workspaces" class="btn btn-primary w-100">Open workspace</a>
+        </div>
+      </section>
+    </main>
   `
 })
 export class InvitationAcceptComponent implements OnInit {
-  protected loading = false;
   protected processing = false;
   protected error = '';
   protected success = false;
@@ -63,42 +61,43 @@ export class InvitationAcceptComponent implements OnInit {
   private readonly wsService = inject(WorkspaceService);
   private readonly authService = inject(AuthService);
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.token = this.route.snapshot.paramMap.get('token') || '';
     if (!this.token) {
       this.error = 'No invitation token provided.';
+      return;
     }
 
     if (!this.authService.isAuthenticated()) {
-      // User must be logged in to accept an invitation
       this.router.navigate(['/login'], { queryParams: { returnUrl: `/invitations/${this.token}` } });
     }
   }
 
-  accept() {
+  protected accept(): void {
+    if (!this.token) return;
     this.processing = true;
     this.error = '';
     this.wsService.acceptInvitation(this.token).subscribe({
-      next: () => {
+      next: (invitation) => {
+        this.wsService.setActiveWorkspace(invitation.workspaceId);
         this.success = true;
         this.processing = false;
       },
       error: (err) => {
-        this.error = err.message;
+        this.error = err instanceof Error ? err.message : 'Could not accept invitation';
         this.processing = false;
       }
     });
   }
 
-  decline() {
+  protected decline(): void {
+    if (!this.token) return;
     this.processing = true;
     this.error = '';
     this.wsService.declineInvitation(this.token).subscribe({
-      next: () => {
-        this.router.navigate(['/dashboard']);
-      },
+      next: () => this.router.navigate(['/dashboard']),
       error: (err) => {
-        this.error = err.message;
+        this.error = err instanceof Error ? err.message : 'Could not decline invitation';
         this.processing = false;
       }
     });

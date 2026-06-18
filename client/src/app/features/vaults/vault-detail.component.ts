@@ -134,13 +134,7 @@ interface FolderNode extends Folder {
                 <p class="lv-muted mb-0 lv-line-clamp-2 text-break">{{ selectedFolder?.description || (selectedFolder ? 'Selected folder resources.' : 'Resources stored in vault root.') }}</p>
               </div>
               <div class="lv-action-toolbar compact">
-                <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" (click)="openFolderCreate(selectedFolder || null)">
-                  <span class="material-symbols-outlined" style="font-size:18px">create_new_folder</span>
-                  New Folder
-                </button>
-                <button class="btn btn-outline-primary" type="button" (click)="openResource('LINK')">New Link</button>
-                <button class="btn btn-outline-primary" type="button" (click)="openResource('NOTE')">New Note</button>
-                <button class="btn btn-outline-primary" type="button" (click)="openResource('SNIPPET')">New Snippet</button>
+
                 <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openResource('FILE')">
                   <span class="material-symbols-outlined" style="font-size:18px">upload</span>
                   Upload

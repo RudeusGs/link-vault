@@ -1,25 +1,49 @@
-import { AuthUser } from '../../auth/models/auth.model';
+export type WorkspacePlan = 'FREE' | 'PRO' | 'TEAM';
+export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
 
 export interface Workspace {
   id: string;
   name: string;
   slug: string;
-  description?: string | null;
-  plan: 'FREE' | 'PRO' | 'TEAM';
-  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+  ownerUserId: string;
+  plan: WorkspacePlan;
+  role: WorkspaceRole;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface WorkspaceRequest {
   name: string;
-  description?: string | null;
 }
 
 export interface WorkspaceMember {
   id: string;
-  user: AuthUser;
-  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+  userId: string;
+  username: string;
+  email: string;
+  displayName?: string | null;
+  role: WorkspaceRole;
   joinedAt: string;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  workspaceName?: string | null;
+  invitedIdentifier: string;
+  invitedUserId?: string | null;
+  invitedByUserId: string;
+  invitedByDisplayName?: string | null;
+  invitedByUsername?: string | null;
+  role: WorkspaceRole;
+  token: string;
+  acceptPath: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  acceptedAt?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
 }
 
 export interface WorkspaceUsage {

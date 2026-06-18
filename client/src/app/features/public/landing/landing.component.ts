@@ -7,303 +7,158 @@ import { RouterModule } from '@angular/router';
   standalone: true,
   imports: [CommonModule, RouterModule],
   styles: [`
-    .landing-page {
-      background: #0f172a;
-      min-height: 100vh;
-      font-family: 'Inter', sans-serif;
-    }
-    .text-gradient {
-      background: linear-gradient(135deg, #38bdf8, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .hero-section {
-      padding: 120px 0 60px;
-    }
-    .hero-title {
-      line-height: 1.1;
-      letter-spacing: -0.02em;
-    }
-    .glow-blob {
-      position: absolute;
-      width: 500px;
-      height: 500px;
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(129, 140, 248, 0.3));
-      filter: blur(100px);
-      border-radius: 50%;
-      z-index: 0;
-      opacity: 0.6;
-    }
-    .glow-blob.top-left {
-      top: -100px;
-      left: -100px;
-    }
-    .glow-blob.bottom-right {
-      bottom: -100px;
-      right: -100px;
-    }
-    .glass-panel {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .mockup-panel {
-      border-top: 1px solid rgba(255,255,255,0.2);
-    }
-    .mockup-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-    .hover-lift {
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .hover-lift:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    }
-    .pricing-card {
-      transition: all 0.3s ease;
-    }
-    .btn-ghost {
-      background: transparent;
-      border: 1px solid transparent;
-    }
-    .btn-ghost:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-    .py-6 {
-      padding-top: 5rem;
-      padding-bottom: 5rem;
-    }
-    .bg-darker {
-      background: #0b1120;
-    }
-    .btn-outline-light {
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-    .btn-outline-light:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.3);
-      color: white;
-    }
+    .landing-page { min-height: 100vh; color: #111827; background: #ffffff; }
+    .landing-nav { height: 72px; border-bottom: 1px solid #e5e7eb; background: #ffffff; }
+    .landing-hero { padding: 84px 0 56px; background: #f6f7f9; border-bottom: 1px solid #e5e7eb; }
+    .landing-title { font-size: clamp(44px, 7vw, 76px); line-height: 0.96; letter-spacing: -0.06em; }
+    .landing-copy { max-width: 680px; color: #4b5563; font-size: 19px; line-height: 1.7; }
+    .product-frame { border: 1px solid #d1d5db; border-radius: 22px; background: #ffffff; box-shadow: 0 18px 36px #e5e7eb; overflow: hidden; }
+    .product-toolbar { height: 48px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+    .product-dot { width: 10px; height: 10px; border: 1px solid #d1d5db; border-radius: 50%; background: #ffffff; }
+    .product-sidebar { border-right: 1px solid #e5e7eb; background: #f9fafb; }
+    .section-block { padding: 80px 0; }
+    .feature-card, .pricing-card { height: 100%; border: 1px solid #e5e7eb; border-radius: 18px; background: #ffffff; box-shadow: 0 1px 2px #e5e7eb; }
+    .feature-icon { width: 44px; height: 44px; border: 1px solid #dbeafe; border-radius: 12px; color: #2563eb; background: #eff6ff; }
+    .price-feature { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: #374151; }
   `],
   template: `
     <div class="landing-page">
-      <!-- Navbar -->
-      <nav class="navbar navbar-expand-lg navbar-dark bg-transparent pt-4 pb-4">
-        <div class="container">
-          <a class="navbar-brand d-flex align-items-center fw-bold fs-4" routerLink="/">
-            <span class="material-symbols-outlined text-primary me-2 fs-3">lock</span>
-            LinkVault
+      <nav class="landing-nav d-flex align-items-center">
+        <div class="container d-flex align-items-center justify-content-between">
+          <a class="lv-brand" routerLink="/">
+            <span class="lv-brand-mark"><span class="material-symbols-outlined" style="font-size:18px">lock</span></span>
+            <span>LinkVault</span>
           </a>
-          <div class="d-flex ms-auto">
-            <a routerLink="/login" class="btn btn-ghost text-white me-3 fw-medium">Log In</a>
-            <a routerLink="/register" class="btn btn-primary px-4 fw-medium shadow-sm">Get Started</a>
+          <div class="d-flex align-items-center gap-2">
+            <a routerLink="/login" class="btn lv-button-quiet">Log in</a>
+            <a routerLink="/register" class="btn btn-primary">Get started</a>
           </div>
         </div>
       </nav>
 
-      <!-- Hero Section -->
-      <section class="hero-section text-center position-relative overflow-hidden">
-        <div class="glow-blob top-left"></div>
-        <div class="glow-blob bottom-right"></div>
-        
-        <div class="container position-relative z-1">
-          <div class="row justify-content-center">
-            <div class="col-lg-8">
-              <span class="badge bg-primary bg-opacity-10 text-primary mb-3 px-3 py-2 rounded-pill fw-medium border border-primary border-opacity-25">
-                ✨ The Ultimate Digital Vault
-              </span>
-              <h1 class="display-3 fw-bold text-white mb-4 hero-title">
-                Organize Your Digital Life<br>
-                <span class="text-gradient">In One Secure Place</span>
-              </h1>
-              <p class="lead text-light text-opacity-75 mb-5 px-md-5 fw-light">
-                LinkVault is a premium workspace for all your links, files, notes, and code snippets.
-                Stop losing important resources and start finding them instantly.
+      <header class="landing-hero">
+        <div class="container">
+          <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+              <div class="lv-page-kicker">Resource workspace for teams</div>
+              <h1 class="landing-title fw-bold mb-4">Save, organize, and share resources without chaos.</h1>
+              <p class="landing-copy mb-4">
+                LinkVault gives every workspace a clear place for vaults, folders, files, links, notes, tags, and team members.
               </p>
-              <div class="d-flex justify-content-center gap-3">
-                <a routerLink="/register" class="btn btn-primary btn-lg px-5 py-3 fw-medium shadow-lg hover-lift">
-                  Start for Free
-                </a>
-                <a href="#features" class="btn btn-outline-light btn-lg px-5 py-3 fw-medium hover-lift">
-                  Explore Features
-                </a>
+              <div class="d-flex flex-wrap gap-2 mb-4">
+                <a routerLink="/register" class="btn btn-primary btn-lg">Start free</a>
+                <a routerLink="/login" class="btn btn-lg lv-button-quiet">Open workspace</a>
+              </div>
+              <div class="d-flex flex-wrap gap-3 lv-muted">
+                <span class="d-inline-flex align-items-center gap-1"><span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Workspace roles</span>
+                <span class="d-inline-flex align-items-center gap-1"><span class="material-symbols-outlined" style="font-size:18px">check_circle</span>File preview</span>
+                <span class="d-inline-flex align-items-center gap-1"><span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Smart link metadata</span>
               </div>
             </div>
-          </div>
-          
-          <!-- Mockup Image / Illustration -->
-          <div class="row justify-content-center mt-5 pt-4">
-            <div class="col-lg-10">
-              <div class="glass-panel mockup-panel shadow-2xl p-2 rounded-4">
-                <div class="mockup-header d-flex gap-2 p-3 pb-2">
-                  <div class="mockup-dot bg-danger"></div>
-                  <div class="mockup-dot bg-warning"></div>
-                  <div class="mockup-dot bg-success"></div>
+
+            <div class="col-lg-6">
+              <div class="product-frame">
+                <div class="product-toolbar d-flex align-items-center justify-content-between px-3">
+                  <div class="d-flex gap-2"><span class="product-dot"></span><span class="product-dot"></span><span class="product-dot"></span></div>
+                  <span class="badge rounded-pill lv-badge-soft">Workspace: Product Team</span>
                 </div>
-                <div class="mockup-body bg-dark rounded-3 overflow-hidden d-flex align-items-center justify-content-center" style="height: 400px;">
-                   <div class="text-center text-muted">
-                     <span class="material-symbols-outlined fs-1 mb-2 text-primary">dashboard</span>
-                     <h5>Beautiful Dashboard</h5>
-                     <p>Manage your vaults, folders, and resources with ease.</p>
-                   </div>
+                <div class="row g-0" style="min-height: 360px;">
+                  <aside class="col-4 product-sidebar p-3">
+                    <div class="small fw-bold text-uppercase lv-muted mb-3">Vaults</div>
+                    <div class="d-grid gap-2">
+                      <div class="lv-soft-panel p-2 fw-semibold">Research</div>
+                      <div class="lv-soft-panel p-2 fw-semibold">Design System</div>
+                      <div class="lv-soft-panel p-2 fw-semibold">Engineering</div>
+                    </div>
+                  </aside>
+                  <main class="col-8 p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                      <strong>Recent resources</strong>
+                      <button class="btn btn-sm btn-primary">Add</button>
+                    </div>
+                    <div class="d-grid gap-2">
+                      <div class="lv-soft-panel p-3 d-flex align-items-center gap-3">
+                        <span class="lv-icon-box"><span class="material-symbols-outlined">link</span></span>
+                        <div><strong>Pricing reference</strong><div class="small lv-muted">link · SaaS research</div></div>
+                      </div>
+                      <div class="lv-soft-panel p-3 d-flex align-items-center gap-3">
+                        <span class="lv-icon-box"><span class="material-symbols-outlined">draft</span></span>
+                        <div><strong>Product requirements</strong><div class="small lv-muted">pdf · workspace docs</div></div>
+                      </div>
+                      <div class="lv-soft-panel p-3 d-flex align-items-center gap-3">
+                        <span class="lv-icon-box"><span class="material-symbols-outlined">code</span></span>
+                        <div><strong>Auth snippet</strong><div class="small lv-muted">typescript · reusable</div></div>
+                      </div>
+                    </div>
+                  </main>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </header>
 
-      <!-- Features Section -->
-      <section id="features" class="features-section py-6">
+      <section class="section-block">
         <div class="container">
-          <div class="text-center mb-5 pb-3">
-            <h2 class="display-5 fw-bold text-white mb-3">Everything you need</h2>
-            <p class="lead text-muted">Powerful features designed for maximum productivity.</p>
+          <div class="text-center mb-5">
+            <div class="lv-page-kicker">Features</div>
+            <h2 class="display-5 fw-bold mb-3">Simple enough to use daily. Structured enough for a team.</h2>
+            <p class="lv-muted fs-5 mb-0">The product focuses on clear workspace context instead of hidden settings.</p>
           </div>
-          
           <div class="row g-4">
-            <div class="col-md-4">
-              <div class="feature-card glass-panel p-4 rounded-4 h-100 hover-lift">
-                <div class="icon-box bg-primary bg-opacity-10 text-primary mb-4 rounded-3 d-inline-flex p-3">
-                  <span class="material-symbols-outlined fs-2">folder_special</span>
-                </div>
-                <h4 class="text-white fw-semibold mb-3">Nested Vaults</h4>
-                <p class="text-muted mb-0">Organize your resources into infinite nested folders. Keep your workspace clean and structural.</p>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="feature-card glass-panel p-4 rounded-4 h-100 hover-lift">
-                <div class="icon-box bg-success bg-opacity-10 text-success mb-4 rounded-3 d-inline-flex p-3">
-                  <span class="material-symbols-outlined fs-2">preview</span>
-                </div>
-                <h4 class="text-white fw-semibold mb-3">Smart Previews</h4>
-                <p class="text-muted mb-0">Automatically fetch metadata, Open Graph images, and descriptions for every link you save.</p>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="feature-card glass-panel p-4 rounded-4 h-100 hover-lift">
-                <div class="icon-box bg-warning bg-opacity-10 text-warning mb-4 rounded-3 d-inline-flex p-3">
-                  <span class="material-symbols-outlined fs-2">group</span>
-                </div>
-                <h4 class="text-white fw-semibold mb-3">Team Collaboration</h4>
-                <p class="text-muted mb-0">Invite your team to workspaces. Share resources securely with role-based access control.</p>
-              </div>
+            <div class="col-md-4" *ngFor="let feature of features">
+              <article class="feature-card p-4">
+                <span class="feature-icon d-inline-flex align-items-center justify-content-center mb-4">
+                  <span class="material-symbols-outlined">{{ feature.icon }}</span>
+                </span>
+                <h3 class="h5 fw-bold mb-2">{{ feature.title }}</h3>
+                <p class="lv-muted mb-0">{{ feature.description }}</p>
+              </article>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Pricing Section -->
-      <section class="pricing-section py-6 bg-darker">
+      <section class="section-block border-top bg-light">
         <div class="container">
-          <div class="text-center mb-5 pb-3">
-            <h2 class="display-5 fw-bold text-white mb-3">Simple, transparent pricing</h2>
-            <p class="lead text-muted">Start for free, upgrade when you need more power.</p>
-          </div>
-          
-          <div class="row justify-content-center g-4">
-            <!-- Free Plan -->
-            <div class="col-lg-4 col-md-6">
-              <div class="pricing-card glass-panel p-5 rounded-4 h-100 d-flex flex-column hover-lift">
-                <h3 class="text-white fw-semibold mb-2">Free</h3>
-                <p class="text-muted mb-4">Perfect for getting started.</p>
-                <div class="price-display mb-4">
-                  <span class="display-4 fw-bold text-white">$0</span>
-                  <span class="text-muted">/mo</span>
+          <div class="row g-4 align-items-stretch justify-content-center">
+            <div class="col-lg-4" *ngFor="let plan of plans">
+              <article class="pricing-card p-4 d-flex flex-column">
+                <h3 class="fw-bold mb-1">{{ plan.name }}</h3>
+                <p class="lv-muted mb-4">{{ plan.description }}</p>
+                <div class="display-5 fw-bold mb-4">{{ plan.price }}</div>
+                <div class="flex-grow-1">
+                  <div class="price-feature" *ngFor="let item of plan.features">
+                    <span class="material-symbols-outlined lv-primary" style="font-size:18px">check_circle</span>
+                    <span>{{ item }}</span>
+                  </div>
                 </div>
-                <ul class="list-unstyled mb-5 flex-grow-1">
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    1 Vault
-                  </li>
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Up to 50 Resources
-                  </li>
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Standard Support
-                  </li>
-                </ul>
-                <a routerLink="/register" class="btn btn-outline-primary btn-lg w-100 fw-medium">Get Started</a>
-              </div>
-            </div>
-
-            <!-- Pro Plan -->
-            <div class="col-lg-4 col-md-6">
-              <div class="pricing-card glass-panel p-5 rounded-4 h-100 d-flex flex-column hover-lift border-primary border-opacity-50 position-relative">
-                <div class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary px-3 py-2">
-                  Most Popular
-                </div>
-                <h3 class="text-white fw-semibold mb-2">Pro</h3>
-                <p class="text-muted mb-4">For power users.</p>
-                <div class="price-display mb-4">
-                  <span class="display-4 fw-bold text-white">$9</span>
-                  <span class="text-muted">/mo</span>
-                </div>
-                <ul class="list-unstyled mb-5 flex-grow-1">
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Unlimited Vaults
-                  </li>
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Unlimited Resources
-                  </li>
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Priority Support
-                  </li>
-                </ul>
-                <a routerLink="/register" class="btn btn-primary btn-lg w-100 fw-medium shadow-sm">Upgrade to Pro</a>
-              </div>
-            </div>
-
-            <!-- Team Plan -->
-            <div class="col-lg-4 col-md-6">
-              <div class="pricing-card glass-panel p-5 rounded-4 h-100 d-flex flex-column hover-lift">
-                <h3 class="text-white fw-semibold mb-2">Team</h3>
-                <p class="text-muted mb-4">For growing businesses.</p>
-                <div class="price-display mb-4">
-                  <span class="display-4 fw-bold text-white">$29</span>
-                  <span class="text-muted">/mo</span>
-                </div>
-                <ul class="list-unstyled mb-5 flex-grow-1">
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Everything in Pro
-                  </li>
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Up to 10 Team Members
-                  </li>
-                  <li class="d-flex align-items-center mb-3 text-light">
-                    <span class="material-symbols-outlined text-primary me-2">check_circle</span>
-                    Advanced Analytics
-                  </li>
-                </ul>
-                <a routerLink="/register" class="btn btn-outline-light btn-lg w-100 fw-medium">Start Free Trial</a>
-              </div>
+                <a routerLink="/register" class="btn mt-4" [class.btn-primary]="plan.primary" [class.lv-button-quiet]="!plan.primary">Choose {{ plan.name }}</a>
+              </article>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Footer -->
-      <footer class="footer py-5 border-top border-secondary border-opacity-25">
-        <div class="container text-center">
-          <a class="navbar-brand d-inline-flex align-items-center fw-bold fs-4 text-white mb-4" routerLink="/">
-            <span class="material-symbols-outlined text-primary me-2 fs-3">lock</span>
-            LinkVault
-          </a>
-          <p class="text-muted mb-0">&copy; 2026 LinkVault Inc. All rights reserved.</p>
+      <footer class="border-top py-4 bg-white">
+        <div class="container d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <span class="fw-bold">LinkVault</span>
+          <span class="lv-muted">A focused resource workspace for modern teams.</span>
         </div>
       </footer>
     </div>
   `
 })
 export class LandingComponent {
+  protected features = [
+    { icon: 'corporate_fare', title: 'Visible workspaces', description: 'Switch context clearly and manage members without digging through hidden settings.' },
+    { icon: 'folder_special', title: 'Vault structure', description: 'Keep resources inside vaults and folders that match real project organization.' },
+    { icon: 'notifications', title: 'Invitation center', description: 'Workspace invites appear in the product so teammates can accept them directly.' }
+  ];
+
+  protected plans = [
+    { name: 'Free', price: '$0', description: 'For personal resource saving.', primary: false, features: ['1 workspace', 'Basic vaults', 'Link and note saving'] },
+    { name: 'Pro', price: '$8', description: 'For serious personal workflows.', primary: true, features: ['More vaults', 'File previews', 'Advanced organization'] },
+    { name: 'Team', price: '$16', description: 'For collaborative workspaces.', primary: false, features: ['Members and roles', 'Workspace invitations', 'Shared resource library'] }
+  ];
 }

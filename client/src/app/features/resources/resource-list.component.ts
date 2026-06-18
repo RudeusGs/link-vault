@@ -19,7 +19,7 @@ import { LinkPreviewCardComponent } from './link-preview-card.component';
           <p class="lv-muted mb-0">Browse, filter, favorite, archive and open resources.</p>
         </div>
 
-        <button class="btn lv-blue-action" type="button" (click)="load()">
+        <button class="btn btn-primary" type="button" (click)="load()">
           <span class="material-symbols-outlined me-1" style="font-size:18px">refresh</span>
           Refresh
         </button>
@@ -47,7 +47,7 @@ import { LinkPreviewCardComponent } from './link-preview-card.component';
         </div>
 
         <div class="col-sm-6 col-lg-auto">
-          <label class="btn lv-blue-action w-100 d-flex align-items-center justify-content-center gap-2">
+          <label class="btn lv-button-quiet w-100 d-flex align-items-center justify-content-center gap-2">
             <input
               class="form-check-input m-0"
               name="favoriteOnly"
@@ -60,7 +60,7 @@ import { LinkPreviewCardComponent } from './link-preview-card.component';
         </div>
 
         <div class="col-lg-auto">
-          <button class="btn lv-blue-action w-100" type="button" (click)="load()">
+          <button class="btn btn-primary w-100" type="button" (click)="load()">
             Search
           </button>
         </div>
@@ -175,7 +175,7 @@ import { LinkPreviewCardComponent } from './link-preview-card.component';
                 Updated {{ resource.updatedAt | date:'mediumDate' }}
               </small>
 
-              <a class="btn btn-sm lv-blue-action" [routerLink]="['/resources', resource.id]">
+              <a class="btn btn-sm btn-primary" [routerLink]="['/resources', resource.id]">
                 Open
               </a>
             </div>

@@ -9,16 +9,16 @@ import { Tag, TagRequest } from './models/tag.model';
   selector: 'app-tags',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <section>
-      <div class="lv-page-header mb-4">
+  template: `    <section>
+      <div class="lv-page-header">
         <div class="lv-page-header-copy">
-          <h1 class="lv-page-title">Tags</h1>
-          <p class="lv-muted fs-6 mb-0">Organize resources by labels.</p>
+          <p class="lv-page-eyebrow">Tags</p>
+          <h1 class="lv-page-title">Resource labels</h1>
+          <p class="lv-page-subtitle">Use short labels to group resources across vaults and folders.</p>
         </div>
-        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openCreate()">
-          <span class="material-symbols-outlined" style="font-size:20px">add</span>
-          New Tag
+        <button class="btn btn-primary" type="button" (click)="openCreate()">
+          <span class="material-symbols-outlined" style="font-size:18px">add</span>
+          New tag
         </button>
       </div>
 
@@ -30,22 +30,25 @@ import { Tag, TagRequest } from './models/tag.model';
         <div class="row g-4">
           <div class="col-sm-6 col-lg-4 col-xl-3" *ngFor="let tag of tags">
             <article class="lv-card lv-card-hover p-4 h-100">
-              <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+              <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
                 <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
-                  <span class="rounded-circle d-inline-block" style="width:12px;height:12px" [style.background]="tag.color || '#003d9b'"></span>
+                  <span class="rounded-circle d-inline-block border" style="width:14px;height:14px" [style.background]="tag.color || '#155eef'"></span>
                   <h2 class="lv-section-title fs-5 text-truncate mb-0">{{ tag.name }}</h2>
                 </div>
                 <div class="dropdown">
                   <button class="lv-icon-button" type="button" data-bs-toggle="dropdown">
-                    <span class="material-symbols-outlined">more_vert</span>
+                    <span class="material-symbols-outlined">more_horiz</span>
                   </button>
-                  <ul class="dropdown-menu dropdown-menu-end border-0 shadow p-2">
-                    <li><button class="dropdown-item rounded-2" type="button" (click)="openEdit(tag)">Edit</button></li>
-                    <li><button class="dropdown-item rounded-2 text-danger" type="button" (click)="delete(tag)">Delete</button></li>
+                  <ul class="dropdown-menu dropdown-menu-end p-2">
+                    <li><button class="dropdown-item" type="button" (click)="openEdit(tag)">Edit</button></li>
+                    <li><button class="dropdown-item text-danger" type="button" (click)="delete(tag)">Delete</button></li>
                   </ul>
                 </div>
               </div>
-              <p class="lv-muted mb-0">{{ tag.usageCount }} resources tagged</p>
+              <div class="lv-soft-panel p-3 d-flex align-items-center justify-content-between gap-3">
+                <span class="lv-muted">Usage</span>
+                <strong>{{ tag.usageCount }} resources</strong>
+              </div>
             </article>
           </div>
         </div>
@@ -54,7 +57,7 @@ import { Tag, TagRequest } from './models/tag.model';
       <ng-template #emptyTpl>
         <div *ngIf="!loading" class="lv-empty-state">
           <span class="material-symbols-outlined d-block mb-3" style="font-size:42px">sell</span>
-          <h2 class="lv-section-title">No tags yet</h2>
+          <h2 class="lv-section-title mb-2">No tags yet</h2>
           <p>Create labels to organize resources faster.</p>
           <button class="btn btn-primary" type="button" (click)="openCreate()">Create tag</button>
         </div>
@@ -63,27 +66,28 @@ import { Tag, TagRequest } from './models/tag.model';
 
     <div class="lv-modal-backdrop" *ngIf="modalOpen" (click)="closeModal()">
       <section class="lv-modal-card p-4" (click)="$event.stopPropagation()">
-        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
           <div>
-            <h2 class="lv-section-title mb-1">{{ editing ? 'Edit Tag' : 'Create Tag' }}</h2>
-            <p class="lv-muted mb-0">Use color to visually group resources.</p>
+            <p class="lv-page-eyebrow mb-1">{{ editing ? 'Edit tag' : 'New tag' }}</p>
+            <h2 class="lv-section-title">{{ editing ? 'Update label' : 'Create label' }}</h2>
+            <p class="lv-muted mb-0">Use color only as a small visual cue.</p>
           </div>
           <button class="lv-icon-button" type="button" (click)="closeModal()"><span class="material-symbols-outlined">close</span></button>
         </div>
 
         <form class="row g-3" (ngSubmit)="save()">
           <div class="col-md-8">
-            <label class="form-label fw-semibold">Name</label>
-            <input class="form-control" name="tagName" required [(ngModel)]="form.name" />
+            <label class="form-label">Name</label>
+            <input class="form-control" name="tagName" required placeholder="Research" [(ngModel)]="form.name" />
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">Color</label>
+            <label class="form-label">Color</label>
             <input class="form-control form-control-color w-100" name="tagColor" type="color" [(ngModel)]="form.color" />
           </div>
-          <div class="col-12 lv-form-actions">
+          <div class="col-12 lv-form-actions pt-2">
             <button class="btn btn-outline-secondary" type="button" (click)="closeModal()">Cancel</button>
             <button class="btn btn-primary" type="submit" [disabled]="saving">
-              <span *ngIf="saving" class="spinner-border spinner-border-sm me-2"></span>
+              <span *ngIf="saving" class="spinner-border spinner-border-sm"></span>
               Save tag
             </button>
           </div>
@@ -130,7 +134,7 @@ export class TagsComponent implements OnInit {
 
   protected openEdit(tag: Tag): void {
     this.editing = tag;
-    this.form = { name: tag.name, color: tag.color ?? '#003d9b' };
+    this.form = { name: tag.name, color: tag.color ?? '#155eef' };
     this.modalOpen = true;
   }
 
@@ -162,6 +166,6 @@ export class TagsComponent implements OnInit {
   }
 
   private emptyForm(): TagRequest {
-    return { name: '', color: '#003d9b' };
+    return { name: '', color: '#155eef' };
   }
 }

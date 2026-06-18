@@ -8,19 +8,18 @@ import { ResourceListComponent } from './resource-list.component';
   selector: 'app-resources-page',
   standalone: true,
   imports: [ResourceListComponent],
-  template: `
-    <section>
-      <div class="lv-page-header mb-4">
+  template: `    <section>
+      <div class="lv-page-header">
         <div class="lv-page-header-copy">
-          <h1 class="lv-page-title">Resources</h1>
-          <p class="lv-muted fs-6 mb-0">Search resources across all vaults.</p>
+          <p class="lv-page-eyebrow">Resources</p>
+          <h1 class="lv-page-title">Search and manage resources</h1>
+          <p class="lv-page-subtitle">A focused index for every link, file, note and snippet saved in your workspace.</p>
         </div>
       </div>
       <article class="lv-card p-4">
         <app-resource-list #list title="All resources" [initialKeyword]="keyword" />
       </article>
-    </section>
-  `
+    </section>  `
 })
 export class ResourcesPageComponent implements OnInit {
   @ViewChild('list') list?: ResourceListComponent;

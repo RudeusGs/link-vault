@@ -13,10 +13,14 @@ ENV CI=true \
     NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
     NPM_CONFIG_FETCH_TIMEOUT=300000
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json* ./
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --include=dev --no-audit --no-fund --loglevel=info
+    if [ -f package-lock.json ]; then \
+      npm ci --include=dev --no-audit --no-fund --loglevel=info; \
+    else \
+      npm install --include=dev --no-audit --no-fund --loglevel=info; \
+    fi
 
 COPY . .
 

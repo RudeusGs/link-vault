@@ -59,6 +59,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/tags/tags.component').then((m) => m.TagsComponent)
   },
+
+  {
+    path: 'workspaces',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/settings/workspace-settings.component').then((m) => m.WorkspaceSettingsComponent)
+  },
   {
     path: 'settings',
     canActivate: [authGuard],

@@ -16,7 +16,7 @@ import { VaultIconPickerComponent } from './vault-icon-picker.component';
       <div class="lv-page-header mb-4">
         <div class="lv-page-header-copy">
           <h1 class="lv-page-title">Vaults</h1>
-          <p class="lv-muted fs-6 mb-0">Manage your personal collections.</p>
+          <p class="lv-muted fs-6 mb-0">Vaults in the active workspace. Switch workspace from the top bar when needed.</p>
         </div>
         <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openCreate()">
           <span class="material-symbols-outlined" style="font-size:20px">add_circle</span>
@@ -165,7 +165,7 @@ export class VaultsComponent implements OnInit {
       name: vault.name,
       description: vault.description ?? '',
       icon: vault.icon ?? 'work',
-      color: vault.color ?? '#003d9b'
+      color: vault.color ?? '#2563eb'
     };
     this.showForm = true;
   }
@@ -216,7 +216,7 @@ export class VaultsComponent implements OnInit {
       name: '',
       description: '',
       icon: 'work',
-      color: '#003d9b'
+      color: '#2563eb'
     };
   }
 }

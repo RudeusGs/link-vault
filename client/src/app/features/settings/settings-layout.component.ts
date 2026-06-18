@@ -29,7 +29,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
               </a>
               <a 
                 class="nav-link lv-nav-link d-flex align-items-center gap-2" 
-                routerLink="/settings/workspaces" 
+                routerLink="/workspaces" 
                 routerLinkActive="active"
               >
                 <span class="material-symbols-outlined" style="font-size: 20px;">workspaces</span>

@@ -27,12 +27,12 @@ public class AuditLogService {
         this.permissionService = permissionService;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public void record(Workspace workspace, User actor, String action, String targetType, UUID targetId) {
         record(workspace, actor, action, targetType, targetId, null);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public void record(
         Workspace workspace,
         User actor,
