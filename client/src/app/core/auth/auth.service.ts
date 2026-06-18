@@ -6,7 +6,8 @@ import {
   AuthUser,
   AvailabilityResponse,
   LoginRequest,
-  RegisterRequest
+  RegisterRequest,
+  UserSession
 } from '../../features/auth/models/auth.model';
 import { ApiService } from '../http/api.service';
 
@@ -49,7 +50,16 @@ export class AuthService {
     return this.api.get<AvailabilityResponse>('/auth/availability', { username, email });
   }
 
+  sessions(): Observable<UserSession[]> {
+    return this.api.get<UserSession[]>('/auth/sessions');
+  }
+
+  revokeSession(sessionId: string): Observable<void> {
+    return this.api.delete<void>(`/auth/sessions/${sessionId}`);
+  }
+
   logout(): void {
+    this.api.post('/auth/logout', {}).subscribe({ error: () => undefined });
     this.tokenState.set(null);
     this.userState.set(null);
     this.safeStorageRemove(TOKEN_KEY);

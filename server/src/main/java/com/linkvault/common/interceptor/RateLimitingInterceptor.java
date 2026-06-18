@@ -6,7 +6,7 @@ import com.linkvault.users.entity.User;
 import com.linkvault.users.service.UserContextService;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
@@ -57,19 +57,19 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
 
     private Bucket newAuthBucket(String key) {
         return Bucket.builder()
-            .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(1))))
+            .addLimit(Bandwidth.builder().capacity(10).refillIntervally(10, Duration.ofMinutes(1)).build())
             .build();
     }
 
     private Bucket newUploadBucket(String key) {
         return Bucket.builder()
-            .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))
+            .addLimit(Bandwidth.builder().capacity(20).refillIntervally(20, Duration.ofMinutes(1)).build())
             .build();
     }
 
     private Bucket newPreviewBucket(String key) {
         return Bucket.builder()
-            .addLimit(Bandwidth.classic(50, Refill.intervally(50, Duration.ofMinutes(1))))
+            .addLimit(Bandwidth.builder().capacity(50).refillIntervally(50, Duration.ofMinutes(1)).build())
             .build();
     }
 

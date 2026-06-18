@@ -33,3 +33,13 @@ export interface AvailabilityResponse {
   usernameExists?: boolean;
   emailExists?: boolean;
 }
+
+export interface UserSession {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string | null;
+  lastUsedAt?: string | null;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+}

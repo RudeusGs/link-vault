@@ -7,6 +7,7 @@ public record VaultRequest(
     @NotBlank @Size(max = 150) String name,
     @Size(max = 1000) String description,
     @Size(max = 80) String icon,
-    @Size(max = 40) String color
+    @Size(max = 40) String color,
+    com.linkvault.common.enums.PublicAccess publicAccess
 ) {
 }

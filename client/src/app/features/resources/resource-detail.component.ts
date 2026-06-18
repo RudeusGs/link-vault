@@ -10,6 +10,7 @@ import { Tag } from '../tags/models/tag.model';
 import { ResourceService } from './data-access/resource.service';
 import { DocumentPreview, Resource, ResourcePreview, ResourceRequest } from './models/resource.model';
 import { LinkPreviewCardComponent } from './link-preview-card.component';
+import { ShareDialogComponent, PublicAccessLevel } from '../../shared/components/share-dialog/share-dialog.component';
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
 const TEXT_PREVIEW_EXTENSIONS = [
@@ -24,7 +25,7 @@ type FileTab = 'preview' | 'insights';
 @Component({
   selector: 'app-resource-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, LinkPreviewCardComponent],
+  imports: [CommonModule, FormsModule, LinkPreviewCardComponent, ShareDialogComponent],
   template: `
     <section *ngIf="resource; else loadingTpl">
       <div class="lv-page-header mb-4">
@@ -43,6 +44,10 @@ type FileTab = 'preview' | 'insights';
         </div>
 
         <div class="lv-action-toolbar">
+          <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openShareResource()">
+            <span class="material-symbols-outlined" style="font-size:18px">share</span>
+            Share
+          </button>
           <button class="btn btn-outline-warning" type="button" (click)="favorite()">
             <span class="material-symbols-outlined me-1" style="font-size:18px">{{ resource.isFavorite ? 'star' : 'star_border' }}</span>
             {{ resource.isFavorite ? 'Unfavorite' : 'Favorite' }}
@@ -265,6 +270,15 @@ type FileTab = 'preview' | 'insights';
       </section>
     </div>
 
+    <app-share-dialog 
+      *ngIf="shareModalOpen && resource"
+      [title]="resource.title"
+      [currentAccess]="resource.publicAccess"
+      [publicUrlPath]="'/public/resources/' + resource.id"
+      (close)="shareModalOpen = false"
+      (accessChanged)="updateResourceAccess($event)"
+    />
+
     <ng-template #loadingTpl>
       <div class="lv-card p-4">
         <span class="spinner-border spinner-border-sm me-2"></span>
@@ -376,6 +390,36 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
         this.loadPreview(resource.id);
       },
       error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update resource')
+    });
+  }
+
+  protected shareModalOpen = false;
+
+  protected openShareResource(): void {
+    this.shareModalOpen = true;
+  }
+
+  protected updateResourceAccess(access: PublicAccessLevel): void {
+    if (!this.resource) return;
+
+    const updateRequest: ResourceRequest = {
+      title: this.resource.title,
+      description: this.resource.description || undefined,
+      resourceType: this.resource.resourceType,
+      url: this.resource.url || undefined,
+      content: this.resource.content || undefined,
+      codeLanguage: this.resource.codeLanguage || undefined,
+      sourceName: this.resource.sourceName || undefined,
+      thumbnailUrl: this.resource.thumbnailUrl || undefined,
+      publicAccess: access
+    };
+
+    this.resourceService.update(this.resource.id, updateRequest).subscribe({
+      next: (resource) => {
+        this.resource = resource;
+        this.shareModalOpen = false;
+      },
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update resource access')
     });
   }
 

@@ -37,6 +37,7 @@ public record ResourceResponse(
     Boolean isFavorite,
     Boolean isArchived,
     List<TagResponse> tags,
+    com.linkvault.common.enums.PublicAccess publicAccess,
     Instant createdAt,
     Instant updatedAt
 ) {

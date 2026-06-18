@@ -6,8 +6,8 @@ import com.linkvault.resources.enums.ResourceType;
 import com.linkvault.vaults.entity.Vault;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -117,4 +117,8 @@ public class Resource extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean isArchived = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private com.linkvault.common.enums.PublicAccess publicAccess = com.linkvault.common.enums.PublicAccess.PRIVATE;
 }

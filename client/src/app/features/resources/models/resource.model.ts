@@ -33,6 +33,7 @@ export interface Resource {
   isFavorite: boolean;
   isArchived: boolean;
   tags: Tag[];
+  publicAccess: 'PRIVATE' | 'VIEW' | 'EDIT';
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +47,7 @@ export interface ResourceRequest {
   codeLanguage?: string;
   sourceName?: string;
   thumbnailUrl?: string;
+  publicAccess?: 'PRIVATE' | 'VIEW' | 'EDIT';
 }
 
 export interface ResourceSearchParams {
