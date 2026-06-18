@@ -3,6 +3,7 @@ package com.linkvault.workspaces.service;
 import com.linkvault.audit.service.AuditLogService;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ForbiddenException;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
 import com.linkvault.users.entity.User;
 import com.linkvault.users.service.UserContextService;
 import com.linkvault.workspaces.dto.WorkspaceMemberRoleRequest;
@@ -31,13 +32,15 @@ class WorkspaceServiceTest {
     private final PermissionService permissionService = mock(PermissionService.class);
     private final QuotaService quotaService = mock(QuotaService.class);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
+    private final RedisCacheInvalidationService cacheInvalidationService = mock(RedisCacheInvalidationService.class);
     private final WorkspaceService workspaceService = new WorkspaceService(
         workspaceRepository,
         workspaceMemberRepository,
         userContextService,
         permissionService,
         quotaService,
-        auditLogService
+        auditLogService,
+        cacheInvalidationService
     );
 
     @Test
@@ -157,3 +160,4 @@ class WorkspaceServiceTest {
         return member;
     }
 }
+

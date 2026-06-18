@@ -1,6 +1,9 @@
 package com.linkvault.dashboard.service;
 
 import com.linkvault.dashboard.dto.DashboardSummaryResponse;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisKeys;
+import com.linkvault.common.redis.RedisProperties;
 import com.linkvault.folders.repository.FolderRepository;
 import com.linkvault.resources.enums.ResourceType;
 import com.linkvault.resources.repository.ResourceRepository;
@@ -23,6 +26,8 @@ public class DashboardService {
     private final TagRepository tagRepository;
     private final TagService tagService;
     private final WorkspaceService workspaceService;
+    private final RedisCacheService redisCacheService;
+    private final RedisProperties redisProperties;
 
     public DashboardService(
         VaultRepository vaultRepository,
@@ -31,7 +36,9 @@ public class DashboardService {
         ResourceService resourceService,
         TagRepository tagRepository,
         TagService tagService,
-        WorkspaceService workspaceService
+        WorkspaceService workspaceService,
+        RedisCacheService redisCacheService,
+        RedisProperties redisProperties
     ) {
         this.vaultRepository = vaultRepository;
         this.folderRepository = folderRepository;
@@ -40,6 +47,8 @@ public class DashboardService {
         this.tagRepository = tagRepository;
         this.tagService = tagService;
         this.workspaceService = workspaceService;
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties;
     }
 
     @Transactional(readOnly = true)
@@ -51,17 +60,23 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public DashboardSummaryResponse summary(java.util.UUID workspaceId) {
         workspaceService.requireMember(workspaceId);
-        return new DashboardSummaryResponse(
-            vaultRepository.countByWorkspace_Id(workspaceId),
-            folderRepository.countByVault_Workspace_Id(workspaceId),
-            resourceRepository.countByVault_Workspace_Id(workspaceId),
-            resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.LINK),
-            resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.FILE),
-            resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.NOTE),
-            resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.SNIPPET),
-            resourceRepository.countByVault_Workspace_IdAndIsFavoriteTrue(workspaceId),
-            resourceService.toResponses(resourceRepository.findTop6ByVault_Workspace_IdOrderByCreatedAtDesc(workspaceId)),
-            tagService.topTags(tagRepository.findByWorkspace_IdOrderByNameAsc(workspaceId), 8)
+        return redisCacheService.getOrLoad(
+            RedisKeys.workspaceDashboard(workspaceId),
+            redisProperties.getCache().getDashboardSummaryTtl(),
+            DashboardSummaryResponse.class,
+            () -> new DashboardSummaryResponse(
+                vaultRepository.countByWorkspace_Id(workspaceId),
+                folderRepository.countByVault_Workspace_Id(workspaceId),
+                resourceRepository.countByVault_Workspace_Id(workspaceId),
+                resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.LINK),
+                resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.FILE),
+                resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.NOTE),
+                resourceRepository.countByVault_Workspace_IdAndResourceType(workspaceId, ResourceType.SNIPPET),
+                resourceRepository.countByVault_Workspace_IdAndIsFavoriteTrue(workspaceId),
+                resourceService.toResponses(resourceRepository.findTop6ByVault_Workspace_IdOrderByCreatedAtDesc(workspaceId)),
+                tagService.topTags(tagRepository.findByWorkspace_IdOrderByNameAsc(workspaceId), 8)
+            )
         );
     }
 }
+

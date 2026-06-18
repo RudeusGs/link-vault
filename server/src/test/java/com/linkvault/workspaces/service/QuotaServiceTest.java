@@ -1,16 +1,24 @@
 package com.linkvault.workspaces.service;
 
 import com.linkvault.common.exception.BadRequestException;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisProperties;
+import com.linkvault.workspaces.dto.WorkspaceUsageResponse;
 import com.linkvault.resources.repository.ResourceRepository;
 import com.linkvault.users.entity.User;
 import com.linkvault.vaults.repository.VaultRepository;
 import com.linkvault.workspaces.entity.Workspace;
 import com.linkvault.workspaces.enums.WorkspacePlan;
 import com.linkvault.workspaces.repository.WorkspaceMemberRepository;
+import java.time.Duration;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,14 +27,25 @@ class QuotaServiceTest {
     private final VaultRepository vaultRepository = mock(VaultRepository.class);
     private final ResourceRepository resourceRepository = mock(ResourceRepository.class);
     private final WorkspaceMemberRepository workspaceMemberRepository = mock(WorkspaceMemberRepository.class);
+    private final RedisCacheService redisCacheService = mock(RedisCacheService.class);
+    private final RedisProperties redisProperties = new RedisProperties();
     private final QuotaService quotaService = new QuotaService(
         vaultRepository,
         resourceRepository,
-        workspaceMemberRepository
+        workspaceMemberRepository,
+        redisCacheService,
+        redisProperties
     );
 
     @Test
     void requireCanCreateVaultRejectsFreeWorkspaceAtLimit() {
+        when(redisCacheService.getOrLoad(
+            anyString(),
+            any(Duration.class),
+            eq(WorkspaceUsageResponse.class),
+            any()
+        )).thenAnswer(invocation -> ((Supplier<WorkspaceUsageResponse>) invocation.getArgument(3)).get());
+
         Workspace workspace = workspace();
         workspace.setPlan(WorkspacePlan.FREE);
 
@@ -52,3 +71,4 @@ class QuotaServiceTest {
         return workspace;
     }
 }
+

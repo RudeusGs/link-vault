@@ -1,9 +1,14 @@
 package com.linkvault.resources.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.linkvault.audit.service.AuditLogService;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.NotFoundException;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisKeys;
+import com.linkvault.common.redis.RedisProperties;
 import com.linkvault.folders.entity.Folder;
 import com.linkvault.folders.service.FolderService;
 import com.linkvault.resources.dto.DocumentPreviewResponse;
@@ -42,6 +47,9 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ResourceService {
 
+    private static final TypeReference<PageResponse<ResourceResponse>> RESOURCE_PAGE_TYPE = new TypeReference<>() {
+    };
+
     private final ResourceRepository resourceRepository;
     private final ResourceTagRepository resourceTagRepository;
     private final ResourceViewRepository resourceViewRepository;
@@ -58,6 +66,9 @@ public class ResourceService {
     private final WorkspaceService workspaceService;
     private final QuotaService quotaService;
     private final AuditLogService auditLogService;
+    private final RedisCacheService redisCacheService;
+    private final RedisProperties redisProperties;
+    private final RedisCacheInvalidationService cacheInvalidationService;
 
     public ResourceService(
         ResourceRepository resourceRepository,
@@ -75,7 +86,10 @@ public class ResourceService {
         ResourceCleanupService resourceCleanupService,
         WorkspaceService workspaceService,
         QuotaService quotaService,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        RedisCacheService redisCacheService,
+        RedisProperties redisProperties,
+        RedisCacheInvalidationService cacheInvalidationService
     ) {
         this.resourceRepository = resourceRepository;
         this.resourceTagRepository = resourceTagRepository;
@@ -93,6 +107,9 @@ public class ResourceService {
         this.workspaceService = workspaceService;
         this.quotaService = quotaService;
         this.auditLogService = auditLogService;
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     @Transactional(readOnly = true)
@@ -102,29 +119,45 @@ public class ResourceService {
 
     @Transactional(readOnly = true)
     public PageResponse<ResourceResponse> listByVault(UUID vaultId, org.springframework.data.domain.Pageable pageable) {
-        vaultService.getVault(vaultId);
-        return resourceMapper.toPageResponse(resourceRepository.findByVault_Id(vaultId, pageable));
+        Vault vault = vaultService.getVault(vaultId);
+        return cachedResourcePage(
+            resourceWorkspaceId(vault),
+            RedisKeys.pageSignature("vault", vaultId, pageableSignature(pageable)),
+            () -> resourceMapper.toPageResponse(resourceRepository.findByVault_Id(vaultId, pageable))
+        );
     }
 
     @Transactional(readOnly = true)
     public PageResponse<ResourceResponse> listByVault(UUID workspaceId, UUID vaultId, org.springframework.data.domain.Pageable pageable) {
         vaultService.getVault(workspaceId, vaultId);
-        return resourceMapper.toPageResponse(
-            resourceRepository.findByVault_IdAndVault_Workspace_Id(vaultId, workspaceId, pageable)
+        return cachedResourcePage(
+            workspaceId,
+            RedisKeys.pageSignature("workspace-vault", vaultId, pageableSignature(pageable)),
+            () -> resourceMapper.toPageResponse(
+                resourceRepository.findByVault_IdAndVault_Workspace_Id(vaultId, workspaceId, pageable)
+            )
         );
     }
 
     @Transactional(readOnly = true)
     public PageResponse<ResourceResponse> listByFolder(UUID folderId, org.springframework.data.domain.Pageable pageable) {
         Folder folder = folderService.getFolder(folderId);
-        return resourceMapper.toPageResponse(resourceRepository.findByFolder_Id(folder.getId(), pageable));
+        return cachedResourcePage(
+            resourceWorkspaceId(folder),
+            RedisKeys.pageSignature("folder", folder.getId(), pageableSignature(pageable)),
+            () -> resourceMapper.toPageResponse(resourceRepository.findByFolder_Id(folder.getId(), pageable))
+        );
     }
 
     @Transactional(readOnly = true)
     public PageResponse<ResourceResponse> listByFolder(UUID workspaceId, UUID folderId, org.springframework.data.domain.Pageable pageable) {
         Folder folder = folderService.getFolder(workspaceId, folderId);
-        return resourceMapper.toPageResponse(
-            resourceRepository.findByFolder_IdAndVault_Workspace_Id(folder.getId(), workspaceId, pageable)
+        return cachedResourcePage(
+            workspaceId,
+            RedisKeys.pageSignature("workspace-folder", folder.getId(), pageableSignature(pageable)),
+            () -> resourceMapper.toPageResponse(
+                resourceRepository.findByFolder_IdAndVault_Workspace_Id(folder.getId(), workspaceId, pageable)
+            )
         );
     }
 
@@ -139,9 +172,8 @@ public class ResourceService {
         Boolean favorite,
         org.springframework.data.domain.Pageable pageable
     ) {
-        return resourceMapper.toPageResponse(
-            resourceSearchService.search(keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
-        );
+        com.linkvault.workspaces.entity.Workspace workspace = workspaceService.getDefaultWorkspaceForCurrentUser();
+        return search(workspace.getId(), keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -156,19 +188,25 @@ public class ResourceService {
         Boolean favorite,
         org.springframework.data.domain.Pageable pageable
     ) {
-        return resourceMapper.toPageResponse(
-            resourceSearchService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
+        return cachedResourcePage(
+            workspaceId,
+            RedisKeys.pageSignature("search", cleanKeyword(keyword), type, tagId, vaultId, folderId, rootOnly, favorite, pageableSignature(pageable)),
+            () -> resourceMapper.toPageResponse(
+                resourceSearchService.search(workspaceId, keyword, type, tagId, vaultId, folderId, rootOnly, favorite, pageable)
+            )
         );
     }
 
     @Transactional(readOnly = true)
     public ResourceResponse getResourceResponse(UUID id) {
-        return resourceMapper.toResponse(getResource(id));
+        Resource resource = getResource(id);
+        return cachedResourceDetail(resource);
     }
 
     @Transactional(readOnly = true)
     public ResourceResponse getResourceResponse(UUID workspaceId, UUID id) {
-        return resourceMapper.toResponse(getResource(workspaceId, id));
+        Resource resource = getResource(workspaceId, id);
+        return cachedResourceDetail(resource);
     }
 
     @Transactional
@@ -212,6 +250,7 @@ public class ResourceService {
         refreshPreviewIfNeeded(resource, previousUrl, false);
         Resource savedResource = resourceRepository.save(resource);
         auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
+        invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
@@ -232,6 +271,7 @@ public class ResourceService {
         refreshPreviewIfNeeded(resource, previousUrl, false);
         Resource savedResource = resourceRepository.save(resource);
         auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
+        invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
@@ -286,6 +326,7 @@ public class ResourceService {
         Resource resource = getResourceForWrite(id);
         auditLogService.record(resource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.deleted", "RESOURCE", resource.getId());
         resourceCleanupService.delete(resource);
+        invalidateResourceCaches(resource);
     }
 
     @Transactional
@@ -293,6 +334,7 @@ public class ResourceService {
         Resource resource = getResourceForWrite(workspaceId, id);
         auditLogService.record(resource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.deleted", "RESOURCE", resource.getId());
         resourceCleanupService.delete(resource);
+        invalidateResourceCaches(resource);
     }
 
     @Transactional
@@ -301,6 +343,7 @@ public class ResourceService {
         resource.setIsFavorite(!Boolean.TRUE.equals(resource.getIsFavorite()));
         Resource savedResource = resourceRepository.save(resource);
         auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.favorite_toggled", "RESOURCE", savedResource.getId());
+        invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
@@ -310,6 +353,7 @@ public class ResourceService {
         resource.setIsFavorite(!Boolean.TRUE.equals(resource.getIsFavorite()));
         Resource savedResource = resourceRepository.save(resource);
         auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.favorite_toggled", "RESOURCE", savedResource.getId());
+        invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
@@ -319,6 +363,7 @@ public class ResourceService {
         resource.setIsArchived(!Boolean.TRUE.equals(resource.getIsArchived()));
         Resource savedResource = resourceRepository.save(resource);
         auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.archived_toggled", "RESOURCE", savedResource.getId());
+        invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
@@ -328,6 +373,7 @@ public class ResourceService {
         resource.setIsArchived(!Boolean.TRUE.equals(resource.getIsArchived()));
         Resource savedResource = resourceRepository.save(resource);
         auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.archived_toggled", "RESOURCE", savedResource.getId());
+        invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
@@ -371,6 +417,8 @@ public class ResourceService {
             resourceTagRepository.save(link);
         }
 
+        invalidateResourceCaches(resource);
+        tagService.invalidateTagCaches(resourceWorkspaceId(resource));
         return resourceMapper.toResponse(resource);
     }
 
@@ -390,6 +438,8 @@ public class ResourceService {
             resourceTagRepository.save(link);
         }
 
+        invalidateResourceCaches(resource);
+        tagService.invalidateTagCaches(resourceWorkspaceId(resource));
         return resourceMapper.toResponse(resource);
     }
 
@@ -398,6 +448,8 @@ public class ResourceService {
         Resource resource = getResourceForWrite(resourceId);
         tagService.getTag(resourceWorkspaceId(resource), tagId);
         resourceTagRepository.deleteByResource_IdAndTag_Id(resourceId, tagId);
+        invalidateResourceCaches(resource);
+        tagService.invalidateTagCaches(resourceWorkspaceId(resource));
         return resourceMapper.toResponse(resource);
     }
 
@@ -406,6 +458,8 @@ public class ResourceService {
         Resource resource = getResourceForWrite(workspaceId, resourceId);
         tagService.getTag(workspaceId, tagId);
         resourceTagRepository.deleteByResource_IdAndTag_Id(resourceId, tagId);
+        invalidateResourceCaches(resource);
+        tagService.invalidateTagCaches(resourceWorkspaceId(resource));
         return resourceMapper.toResponse(resource);
     }
 
@@ -417,7 +471,9 @@ public class ResourceService {
         }
 
         applyLinkPreview(resource, true, false);
-        return resourceMapper.toResponse(resourceRepository.save(resource));
+        Resource savedResource = resourceRepository.save(resource);
+        invalidateResourceCaches(savedResource);
+        return resourceMapper.toResponse(savedResource);
     }
 
     @Transactional
@@ -428,7 +484,9 @@ public class ResourceService {
         }
 
         applyLinkPreview(resource, true, false);
-        return resourceMapper.toResponse(resourceRepository.save(resource));
+        Resource savedResource = resourceRepository.save(resource);
+        invalidateResourceCaches(savedResource);
+        return resourceMapper.toResponse(savedResource);
     }
 
     @Transactional(readOnly = true)
@@ -491,6 +549,58 @@ public class ResourceService {
             .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found"));
     }
 
+
+    private PageResponse<ResourceResponse> cachedResourcePage(
+        UUID workspaceId,
+        String signature,
+        java.util.function.Supplier<PageResponse<ResourceResponse>> loader
+    ) {
+        workspaceService.requireMember(workspaceId);
+        return redisCacheService.getOrLoad(
+            RedisKeys.workspaceResources(workspaceId, signature),
+            redisProperties.getCache().getResourceListTtl(),
+            RESOURCE_PAGE_TYPE,
+            loader
+        );
+    }
+
+    private ResourceResponse cachedResourceDetail(Resource resource) {
+        return redisCacheService.getOrLoad(
+            RedisKeys.resourceDetail(resource.getId()),
+            redisProperties.getCache().getResourceDetailTtl(),
+            ResourceResponse.class,
+            () -> resourceMapper.toResponse(resource)
+        );
+    }
+
+    private String pageableSignature(org.springframework.data.domain.Pageable pageable) {
+        if (pageable == null) {
+            return "unpaged";
+        }
+        return pageable.getPageNumber() + ":" + pageable.getPageSize() + ":" + pageable.getSort();
+    }
+
+    private String cleanKeyword(String keyword) {
+        return keyword == null || keyword.isBlank() ? null : keyword.trim();
+    }
+
+    private UUID resourceWorkspaceId(Vault vault) {
+        return vault.getWorkspace().getId();
+    }
+
+    private UUID resourceWorkspaceId(Folder folder) {
+        return folder.getVault().getWorkspace().getId();
+    }
+
+    private void invalidateResourceCaches(Resource resource) {
+        cacheInvalidationService.invalidateWorkspace(resourceWorkspaceId(resource));
+        cacheInvalidationService.invalidateVault(resource.getVault().getId());
+        cacheInvalidationService.invalidateResource(resource.getId());
+        if (resource.getFolder() != null) {
+            cacheInvalidationService.invalidateFolder(resource.getFolder().getId());
+        }
+    }
+
     private UUID resourceWorkspaceId(Resource resource) {
         return resource.getVault().getWorkspace().getId();
     }
@@ -513,6 +623,7 @@ public class ResourceService {
         refreshPreviewIfNeeded(resource, null, false);
         Resource savedResource = resourceRepository.save(resource);
         auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.created", "RESOURCE", savedResource.getId());
+        invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
@@ -542,6 +653,7 @@ public class ResourceService {
 
             Resource savedResource = resourceRepository.save(resource);
             auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.uploaded", "RESOURCE", savedResource.getId());
+            invalidateResourceCaches(savedResource);
             return resourceMapper.toResponse(savedResource);
         } catch (RuntimeException exception) {
             try {
@@ -703,3 +815,4 @@ public class ResourceService {
         return null;
     }
 }
+

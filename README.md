@@ -14,7 +14,7 @@ LinkVault is a full-stack personal resource vault for organizing links, document
 - JWT authentication, per-user ownership checks, CORS configuration, and structured API responses.
 - Consistent API response envelope with `success`, `message`, `data`, `errorCode`, `details`, and `timestamp`.
 - Flyway-managed initial schema with UUID primary keys, foreign keys, unique constraints, and query indexes.
-- Docker Compose setup for client, server, PostgreSQL, and pgAdmin.
+- Docker Compose setup for client, server, PostgreSQL, Redis, and pgAdmin.
 
 ## Tech Stack
 
@@ -23,6 +23,7 @@ LinkVault is a full-stack personal resource vault for organizing links, document
 | Frontend | Angular 21, TypeScript, Bootstrap utility classes, Material Symbols |
 | Backend | Java 21, Spring Boot 4, Spring Security, Spring Data JPA |
 | Database | PostgreSQL 16 |
+| Cache / Rate Limit | Redis 7.4 |
 | Storage | Cloudinary |
 | API Docs | Springdoc OpenAPI / Swagger UI |
 | Containers | Docker, Docker Compose, Nginx |
@@ -215,6 +216,12 @@ http://localhost:8080/api
 | `POSTGRES_PASSWORD` | PostgreSQL password | `linkvault123` |
 | `PGADMIN_EMAIL` | pgAdmin login email | `admin@linkvault.dev` |
 | `PGADMIN_PASSWORD` | pgAdmin login password | `admin123` |
+| `REDIS_PASSWORD` | Redis password used by Docker Compose and backend | `linkvaultredis123` |
+| `REDIS_DATABASE` | Redis logical database index | `0` |
+| `REDIS_TIMEOUT` | Redis command timeout | `2s` |
+| `APP_REDIS_ENABLED` | Enable Redis cache/rate-limit layer | `true` |
+| `APP_REDIS_KEY_PREFIX` | Prefix for all Redis keys | `linkvault` |
+| `APP_REDIS_RATE_LIMIT_ENABLED` | Enable Redis-backed rate limiting | `true` |
 | `APP_JWT_ISSUER` | JWT issuer | `link-vault-api` |
 | `APP_JWT_SECRET` | JWT signing secret | required for Docker/prod |
 | `APP_JWT_EXPIRATION_MINUTES` | Token lifetime in minutes | `120` |
@@ -325,6 +332,7 @@ docker compose build
 ## Security Notes
 
 - JWT secrets must be provided through `APP_JWT_SECRET` before Docker/prod startup.
+- Redis is used for distributed rate limiting and short-lived cache layers for dashboard, vaults, folders, resources, tags, quotas, and link previews.
 - File preview is served through backend-controlled endpoints instead of exposing raw storage access in the UI.
 - Link preview fetching validates URL scheme and blocks local/private network targets.
 - Cloudinary credentials should be provided through environment variables and never committed.
@@ -333,3 +341,5 @@ docker compose build
 ## Project Status
 
 LinkVault is ready for local demo and GitHub presentation. It includes a complete full-stack flow for authenticated resource organization, file upload/preview, smart link previews, and professional workspace navigation.
+
+

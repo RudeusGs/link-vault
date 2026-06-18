@@ -2,6 +2,9 @@ package com.linkvault.workspaces.service;
 
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisKeys;
+import com.linkvault.common.redis.RedisProperties;
 import com.linkvault.resources.repository.ResourceRepository;
 import com.linkvault.vaults.repository.VaultRepository;
 import com.linkvault.workspaces.dto.WorkspaceUsageResponse;
@@ -19,19 +22,34 @@ public class QuotaService {
     private final VaultRepository vaultRepository;
     private final ResourceRepository resourceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final RedisCacheService redisCacheService;
+    private final RedisProperties redisProperties;
 
     public QuotaService(
         VaultRepository vaultRepository,
         ResourceRepository resourceRepository,
-        WorkspaceMemberRepository workspaceMemberRepository
+        WorkspaceMemberRepository workspaceMemberRepository,
+        RedisCacheService redisCacheService,
+        RedisProperties redisProperties
     ) {
         this.vaultRepository = vaultRepository;
         this.resourceRepository = resourceRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties;
     }
 
     @Transactional(readOnly = true)
     public WorkspaceUsageResponse usage(Workspace workspace) {
+        return redisCacheService.getOrLoad(
+            RedisKeys.workspaceUsage(workspace.getId()),
+            redisProperties.getCache().getWorkspaceUsageTtl(),
+            WorkspaceUsageResponse.class,
+            () -> buildUsage(workspace)
+        );
+    }
+
+    private WorkspaceUsageResponse buildUsage(Workspace workspace) {
         WorkspacePlanLimits limits = limitsFor(workspace.getPlan());
         long vaultCount = vaultRepository.countByWorkspace_Id(workspace.getId());
         long memberCount = workspaceMemberRepository.countByWorkspace_IdAndDeletedAtIsNull(workspace.getId());
@@ -85,3 +103,4 @@ public class QuotaService {
         };
     }
 }
+

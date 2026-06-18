@@ -1,6 +1,9 @@
 package com.linkvault.resources.service;
 
 import com.linkvault.resources.dto.LinkPreviewResponse;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisKeys;
+import com.linkvault.common.redis.RedisProperties;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
@@ -14,9 +17,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,7 +36,6 @@ public class LinkPreviewService {
     private static final int MAX_HTML_BYTES = 1024 * 1024;
     private static final int MAX_REDIRECTS = 3;
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration CACHE_TTL = Duration.ofMinutes(30);
     private static final Pattern META_TAG_PATTERN = Pattern.compile("<meta\\s+[^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern LINK_TAG_PATTERN = Pattern.compile("<link\\s+[^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Pattern TITLE_PATTERN = Pattern.compile("<title[^>]*>(.*?)</title>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -47,7 +47,13 @@ public class LinkPreviewService {
         .connectTimeout(Duration.ofSeconds(3))
         .followRedirects(HttpClient.Redirect.NEVER)
         .build();
-    private final Map<String, CachedPreview> cache = new ConcurrentHashMap<>();
+    private final RedisCacheService redisCacheService;
+    private final RedisProperties redisProperties;
+
+    public LinkPreviewService(RedisCacheService redisCacheService, RedisProperties redisProperties) {
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties;
+    }
 
     public LinkPreviewResponse fetch(String rawUrl) {
         return fetch(rawUrl, false);
@@ -58,20 +64,29 @@ public class LinkPreviewService {
         String normalizedUrl = null;
         try {
             normalizedUrl = normalizeForFetch(rawUrl);
-            CachedPreview cached = cache.get(normalizedUrl);
-            if (!forceRefresh && cached != null && cached.cachedAt().plus(CACHE_TTL).isAfter(now)) {
-                return cached.response();
+            String cacheKey = RedisKeys.linkPreview(normalizedUrl);
+
+            if (forceRefresh) {
+                redisCacheService.delete(cacheKey);
+            } else {
+                var cached = redisCacheService.get(cacheKey, LinkPreviewResponse.class);
+                if (cached.isPresent()) {
+                    return cached.get();
+                }
             }
 
             URI target = URI.create(normalizedUrl);
             FetchResult fetchResult = fetchHtml(target);
             LinkPreviewResponse response = parse(fetchResult.html(), rawUrl, fetchResult.finalUri(), now);
-            cache.put(normalizedUrl, new CachedPreview(response, now));
+            redisCacheService.set(cacheKey, response, redisProperties.getCache().getLinkPreviewTtl());
             return response;
         } catch (LinkPreviewException exception) {
             log.warn("Link preview fetch skipped for {}: {}", rawUrl, exception.getMessage());
             return failure(rawUrl, normalizedUrl, exception.status(), exception.getMessage(), now);
         } catch (Exception exception) {
+            if (exception instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             log.warn("Link preview fetch failed for {}: {}", rawUrl, exception.getMessage());
             log.debug("Link preview fetch stacktrace", exception);
             return failure(rawUrl, normalizedUrl, STATUS_FAILED, "Could not fetch preview metadata", now);
@@ -456,9 +471,6 @@ public class LinkPreviewService {
     private record FetchResult(URI finalUri, String html) {
     }
 
-    private record CachedPreview(LinkPreviewResponse response, Instant cachedAt) {
-    }
-
     private static class LinkPreviewException extends RuntimeException {
         private final String status;
 
@@ -472,3 +484,4 @@ public class LinkPreviewService {
         }
     }
 }
+

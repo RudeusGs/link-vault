@@ -5,6 +5,7 @@ import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.common.exception.UnauthorizedException;
 import com.linkvault.common.response.ApiResponse;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
 import com.linkvault.common.pagination.PageResponse;
 import com.linkvault.resources.dto.ResourceResponse;
 import com.linkvault.resources.mapper.ResourceMapper;
@@ -27,17 +28,20 @@ public class PublicVaultController {
     private final VaultService vaultService;
     private final ResourceRepository resourceRepository;
     private final ResourceMapper resourceMapper;
+    private final RedisCacheInvalidationService cacheInvalidationService;
 
     public PublicVaultController(
         VaultRepository vaultRepository, 
         VaultService vaultService,
         ResourceRepository resourceRepository,
-        ResourceMapper resourceMapper
+        ResourceMapper resourceMapper,
+        RedisCacheInvalidationService cacheInvalidationService
     ) {
         this.vaultRepository = vaultRepository;
         this.vaultService = vaultService;
         this.resourceRepository = resourceRepository;
         this.resourceMapper = resourceMapper;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     private Vault requirePublicVault(UUID id, boolean requireEdit) {
@@ -86,6 +90,8 @@ public class PublicVaultController {
         vault.setColor(request.color() != null ? request.color().trim() : null);
         
         Vault savedVault = vaultRepository.save(vault);
+        cacheInvalidationService.invalidateWorkspace(savedVault.getWorkspace().getId());
+        cacheInvalidationService.invalidateVault(savedVault.getId());
         return ApiResponse.success("Vault updated", vaultService.toResponse(savedVault));
     }
 
@@ -108,6 +114,11 @@ public class PublicVaultController {
         resource.setThumbnailUrl(request.thumbnailUrl() != null ? request.thumbnailUrl().trim() : null);
         
         com.linkvault.resources.entity.Resource savedResource = resourceRepository.save(resource);
+        cacheInvalidationService.invalidateWorkspace(savedResource.getVault().getWorkspace().getId());
+        cacheInvalidationService.invalidateVault(savedResource.getVault().getId());
+        cacheInvalidationService.invalidateResource(savedResource.getId());
         return ApiResponse.success("Resource created", resourceMapper.toResponse(savedResource));
     }
 }
+
+
