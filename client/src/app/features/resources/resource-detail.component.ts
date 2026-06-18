@@ -19,6 +19,10 @@ const TEXT_PREVIEW_EXTENSIONS = [
   'sql', 'sh', 'ps1', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'php',
   'rb', 'swift', 'dart'
 ];
+const TEXT_PREVIEW_MAX_LINES = 300;
+const TEXT_PREVIEW_MAX_BYTES = 200 * 1024;
+const DOC_PREVIEW_MAX_CHARS = 30000;
+const NOTE_PREVIEW_MAX_CHARS = 50000;
 
 type FileTab = 'preview' | 'insights';
 
@@ -27,250 +31,389 @@ type FileTab = 'preview' | 'insights';
   standalone: true,
   imports: [CommonModule, FormsModule, LinkPreviewCardComponent, ShareDialogComponent],
   template: `
-    <section *ngIf="resource; else loadingTpl">
-      <div class="lv-page-header mb-4">
-        <div class="lv-page-header-copy">
-          <button class="btn btn-link px-0 lv-primary fw-semibold" type="button" (click)="goBack()">
-            <span class="material-symbols-outlined me-1" style="font-size:18px">arrow_back</span>
-            Back
+    <section *ngIf="resource; else loadingTpl" class="lv-resource-detail-page">
+      <header class="lv-resource-detail-hero">
+        <div class="lv-resource-detail-main">
+          <button class="lv-plain-link" type="button" (click)="goBack()">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Back to {{ resource.folderName || resource.vaultName || 'workspace' }}
           </button>
-          <div class="d-flex align-items-center gap-3 flex-wrap">
-            <h1 class="lv-page-title lv-break-title">{{ resource.title }}</h1>
-            <span class="badge rounded-pill lv-badge-soft px-3 py-2">{{ resource.resourceType }}</span>
-            <span *ngIf="resource.isFavorite" class="badge rounded-pill text-bg-warning px-3 py-2">Favorite</span>
-            <span *ngIf="resource.isArchived" class="badge rounded-pill text-bg-secondary px-3 py-2">Archived</span>
+
+          <div class="lv-resource-heading-row">
+            <span class="lv-resource-heading-icon">
+              <span class="material-symbols-outlined">{{ resourceIcon() }}</span>
+            </span>
+            <div class="lv-resource-heading-copy">
+              <div class="lv-resource-eyebrow">{{ resource.resourceType }} resource</div>
+              <h1 class="lv-resource-detail-title">{{ resource.title }}</h1>
+              <p class="lv-resource-detail-description">
+                {{ resource.description || fallbackDescription() }}
+              </p>
+            </div>
           </div>
-          <p class="lv-muted mt-2 mb-0 lv-line-clamp-3 text-break">{{ resource.description || 'No description' }}</p>
+
+          <div class="lv-resource-status-row">
+            <span class="lv-status-pill strong">{{ resource.publicAccess }}</span>
+            <span *ngIf="resource.isFavorite" class="lv-status-pill warning">Favorite</span>
+            <span *ngIf="resource.isArchived" class="lv-status-pill muted">Archived</span>
+            <span class="lv-status-pill">Updated {{ resource.updatedAt | date:'mediumDate' }}</span>
+          </div>
         </div>
 
-        <div class="lv-action-toolbar">
-          <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openShareResource()">
-            <span class="material-symbols-outlined" style="font-size:18px">share</span>
+        <div class="lv-resource-actions">
+          <button class="lv-detail-action primary" type="button" (click)="openShareResource()">
+            <span class="material-symbols-outlined">share</span>
             Share
           </button>
-          <button class="btn btn-outline-warning" type="button" (click)="favorite()">
-            <span class="material-symbols-outlined me-1" style="font-size:18px">{{ resource.isFavorite ? 'star' : 'star_border' }}</span>
+          <button class="lv-detail-action" type="button" (click)="favorite()">
+            <span class="material-symbols-outlined">{{ resource.isFavorite ? 'star' : 'star_border' }}</span>
             {{ resource.isFavorite ? 'Unfavorite' : 'Favorite' }}
           </button>
-          <button class="btn btn-outline-secondary" type="button" (click)="archive()">
-            <span class="material-symbols-outlined me-1" style="font-size:18px">archive</span>
+          <button class="lv-detail-action" type="button" (click)="archive()">
+            <span class="material-symbols-outlined">archive</span>
             {{ resource.isArchived ? 'Unarchive' : 'Archive' }}
           </button>
-          <button class="btn btn-outline-primary" type="button" (click)="openEdit()">
-            <span class="material-symbols-outlined me-1" style="font-size:18px">edit</span>
+          <button class="lv-detail-action" type="button" (click)="openEdit()">
+            <span class="material-symbols-outlined">edit</span>
             Edit
           </button>
-          <button class="btn btn-outline-danger" type="button" (click)="delete()">
-            <span class="material-symbols-outlined me-1" style="font-size:18px">delete</span>
+          <button class="lv-detail-action danger" type="button" (click)="delete()">
+            <span class="material-symbols-outlined">delete</span>
             Delete
           </button>
         </div>
+      </header>
+
+      <div *ngIf="error" class="lv-inline-error">
+        <span class="material-symbols-outlined">error</span>
+        {{ error }}
       </div>
 
-      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+      <main class="lv-resource-detail-layout">
+        <aside class="lv-resource-detail-sidebar">
+          <article class="lv-detail-side-card">
+            <div class="lv-side-card-header">
+              <h2>Information</h2>
+              <span class="lv-side-card-subtitle">Resource metadata</span>
+            </div>
 
-      <div class="row g-4">
-        <div class="col-xl-4">
-          <article class="lv-card p-4 mb-4">
-            <h2 class="lv-section-title mb-3">Details</h2>
-            <div class="d-grid gap-3">
-              <div class="lv-detail-row"><span class="lv-muted">Vault</span><strong>{{ resource.vaultName }}</strong></div>
-              <div class="lv-detail-row" *ngIf="resource.folderName"><span class="lv-muted">Folder</span><strong>{{ resource.folderName }}</strong></div>
-              <div class="lv-detail-row"><span class="lv-muted">Type</span><strong>{{ resource.resourceType }}</strong></div>
-              <div class="lv-detail-row" *ngIf="resource.fileName"><span class="lv-muted">File</span><strong>{{ resource.fileName }}</strong></div>
-              <div class="lv-detail-row" *ngIf="resource.mimeType"><span class="lv-muted">MIME</span><strong>{{ resource.mimeType }}</strong></div>
-              <div class="lv-detail-row" *ngIf="resource.fileSize"><span class="lv-muted">Size</span><strong>{{ formatFileSize(resource.fileSize) }}</strong></div>
-              <div class="lv-detail-row"><span class="lv-muted">Updated</span><strong>{{ resource.updatedAt | date:'mediumDate' }}</strong></div>
+            <div class="lv-meta-list">
+              <div class="lv-meta-row">
+                <span>Vault</span>
+                <strong>{{ resource.vaultName || 'Untitled vault' }}</strong>
+              </div>
+              <div class="lv-meta-row" *ngIf="resource.folderName">
+                <span>Folder</span>
+                <strong>{{ resource.folderName }}</strong>
+              </div>
+              <div class="lv-meta-row">
+                <span>Type</span>
+                <strong>{{ resource.resourceType }}</strong>
+              </div>
+              <div class="lv-meta-row" *ngIf="resource.fileName">
+                <span>File name</span>
+                <strong>{{ resource.fileName }}</strong>
+              </div>
+              <div class="lv-meta-row" *ngIf="resource.mimeType">
+                <span>MIME</span>
+                <strong>{{ resource.mimeType }}</strong>
+              </div>
+              <div class="lv-meta-row" *ngIf="resource.fileSize">
+                <span>Size</span>
+                <strong>{{ formatFileSize(resource.fileSize) }}</strong>
+              </div>
+              <div class="lv-meta-row">
+                <span>Created</span>
+                <strong>{{ resource.createdAt | date:'mediumDate' }}</strong>
+              </div>
             </div>
           </article>
 
-          <article class="lv-card p-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h2 class="lv-section-title mb-0">Tags</h2>
+          <article class="lv-detail-side-card">
+            <div class="lv-side-card-header horizontal">
+              <div>
+                <h2>Tags</h2>
+                <span class="lv-side-card-subtitle">Organize this resource</span>
+              </div>
+              <span class="lv-count-pill">{{ resource.tags.length }}</span>
             </div>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-              <span *ngFor="let tag of resource.tags" class="badge rounded-pill text-bg-light border px-3 py-2 lv-chip">
-                <span class="lv-chip-label">{{ tag.name }}</span>
-                <button class="btn btn-sm p-0 ms-1 border-0" type="button" (click)="detachTag(tag)">×</button>
+
+            <div class="lv-tag-stack" *ngIf="resource.tags.length; else noTagsTpl">
+              <span *ngFor="let tag of resource.tags" class="lv-resource-tag">
+                <span>{{ tag.name }}</span>
+                <button type="button" aria-label="Remove tag" (click)="detachTag(tag)">×</button>
               </span>
-              <span *ngIf="resource.tags.length === 0" class="lv-muted">No tags attached.</span>
             </div>
-            <div class="input-group">
-              <select class="form-select" name="tagId" [(ngModel)]="selectedTagId">
+            <ng-template #noTagsTpl>
+              <p class="lv-empty-copy">No tags attached yet.</p>
+            </ng-template>
+
+            <div class="lv-attach-tag-row">
+              <select class="lv-input" name="tagId" [(ngModel)]="selectedTagId">
                 <option value="">Choose tag</option>
                 <option *ngFor="let tag of tags" [value]="tag.id">{{ tag.name }}</option>
               </select>
-              <button class="btn btn-outline-primary" type="button" (click)="attachTag()">Attach</button>
+              <button class="lv-detail-action primary compact" type="button" (click)="attachTag()">Attach</button>
             </div>
           </article>
-        </div>
+        </aside>
 
-        <div class="col-xl-8">
-          <article class="lv-card p-4">
-            <div class="lv-section-toolbar mb-3">
-              <div class="min-w-0">
-                <h2 class="lv-section-title mb-1">Resource preview</h2>
-                <p class="lv-muted mb-0 lv-line-clamp-2">{{ resource.resourceType === 'FILE' ? 'Secure in-app preview for PDF, DOCX, images and code files.' : 'Preview the saved content or open it externally.' }}</p>
-              </div>
-              <div class="lv-action-toolbar compact" *ngIf="resource.resourceType === 'FILE'; else nonFileActionsTpl">
-                <button class="btn btn-outline-secondary" type="button" (click)="copyOriginalFileLink()" [disabled]="!resource.fileUrl">
-                  <span class="material-symbols-outlined me-1" style="font-size:16px">content_copy</span>
-                  {{ copyState || 'Copy link' }}
-                </button>
-                <button class="btn btn-outline-primary" type="button" (click)="downloadFile()" [disabled]="fileLoading">
-                  <span class="material-symbols-outlined me-1" style="font-size:16px">download</span>
-                  Download
-                </button>
-                <button class="btn btn-primary" type="button" (click)="openFile()" [disabled]="fileLoading || !canOpenFile()">
-                  Open
-                  <span class="material-symbols-outlined ms-1" style="font-size:16px">open_in_new</span>
-                </button>
-              </div>
-              <ng-template #nonFileActionsTpl>
-                <div *ngIf="resource.resourceType === 'LINK'; else openLinkTpl" class="lv-action-toolbar compact">
-                  <button class="btn btn-outline-secondary" type="button" (click)="copyLink()" [disabled]="!resource.url">
-                    <span class="material-symbols-outlined me-1" style="font-size:16px">content_copy</span>
-                    {{ linkCopyState || 'Copy link' }}
-                  </button>
-                  <button class="btn btn-outline-primary" type="button" (click)="refreshLinkPreview()" [disabled]="linkPreviewRefreshing">
-                    <span *ngIf="linkPreviewRefreshing" class="spinner-border spinner-border-sm me-1"></span>
-                    <span *ngIf="!linkPreviewRefreshing" class="material-symbols-outlined me-1" style="font-size:16px">refresh</span>
-                    Refresh preview
-                  </button>
-                  <a *ngIf="openUrl" class="btn btn-primary" [href]="openUrl" target="_blank" rel="noopener">
-                    Open link
-                    <span class="material-symbols-outlined ms-1" style="font-size:16px">open_in_new</span>
-                  </a>
-                </div>
-              </ng-template>
-              <ng-template #openLinkTpl>
-                <a *ngIf="openUrl" class="btn btn-primary" [href]="openUrl" target="_blank">
-                  Open
-                  <span class="material-symbols-outlined ms-1" style="font-size:16px">open_in_new</span>
-                </a>
-              </ng-template>
+        <section class="lv-resource-preview-panel">
+          <div class="lv-preview-topbar">
+            <div>
+              <h2>Preview</h2>
+              <p>{{ previewSubtitle() }}</p>
             </div>
 
-            <ng-container [ngSwitch]="resource.resourceType">
-              <div *ngSwitchCase="'LINK'" class="d-grid gap-3">
-                <app-link-preview-card
-                  [resource]="resource"
-                  [showActions]="true"
-                  [showRefresh]="true"
-                  [refreshing]="linkPreviewRefreshing"
-                  (refresh)="refreshLinkPreview()"
-                ></app-link-preview-card>
-                <div *ngIf="resource.previewStatus && resource.previewStatus !== 'OK'" class="alert alert-warning mb-0">
-                  {{ resource.previewError || 'Preview metadata is not available yet.' }} The original link is still saved and can be opened.
+            <div class="lv-preview-actions" *ngIf="resource.resourceType === 'FILE'; else nonFileActionsTpl">
+              <button class="lv-detail-action" type="button" (click)="copyOriginalFileLink()" [disabled]="!resource.fileUrl">
+                <span class="material-symbols-outlined">content_copy</span>
+                {{ copyState || 'Copy link' }}
+              </button>
+              <button class="lv-detail-action" type="button" (click)="downloadFile()" [disabled]="fileLoading">
+                <span class="material-symbols-outlined">download</span>
+                Download
+              </button>
+              <button class="lv-detail-action primary" type="button" (click)="openFile()" [disabled]="fileLoading || !canOpenFile()">
+                Open
+                <span class="material-symbols-outlined">open_in_new</span>
+              </button>
+            </div>
+
+            <ng-template #nonFileActionsTpl>
+              <div *ngIf="resource.resourceType === 'LINK'; else standardOpenTpl" class="lv-preview-actions">
+                <button class="lv-detail-action" type="button" (click)="copyLink()" [disabled]="!resource.url">
+                  <span class="material-symbols-outlined">content_copy</span>
+                  {{ linkCopyState || 'Copy link' }}
+                </button>
+                <button class="lv-detail-action" type="button" (click)="refreshLinkPreview()" [disabled]="linkPreviewRefreshing">
+                  <span *ngIf="linkPreviewRefreshing" class="lv-mini-spinner"></span>
+                  <span *ngIf="!linkPreviewRefreshing" class="material-symbols-outlined">refresh</span>
+                  Refresh
+                </button>
+                <a *ngIf="openUrl" class="lv-detail-action primary" [href]="openUrl" target="_blank" rel="noopener">
+                  Open link
+                  <span class="material-symbols-outlined">open_in_new</span>
+                </a>
+              </div>
+            </ng-template>
+
+            <ng-template #standardOpenTpl>
+              <a *ngIf="openUrl" class="lv-detail-action primary" [href]="openUrl" target="_blank" rel="noopener">
+                Open
+                <span class="material-symbols-outlined">open_in_new</span>
+              </a>
+            </ng-template>
+          </div>
+
+          <ng-container [ngSwitch]="resource.resourceType">
+            <div *ngSwitchCase="'LINK'" class="lv-preview-body simple">
+              <app-link-preview-card
+                [resource]="resource"
+                [showActions]="true"
+                [showRefresh]="true"
+                [refreshing]="linkPreviewRefreshing"
+                (refresh)="refreshLinkPreview()"
+              ></app-link-preview-card>
+              <div *ngIf="resource.previewStatus && resource.previewStatus !== 'OK'" class="lv-inline-warning">
+                <span class="material-symbols-outlined">info</span>
+                {{ resource.previewError || 'Preview metadata is not available yet.' }} The original link is still saved.
+              </div>
+            </div>
+
+            <article *ngSwitchCase="'NOTE'" class="lv-readable-panel">
+              <div class="lv-readable-header">
+                <span class="material-symbols-outlined">notes</span>
+                <strong>Note content</strong>
+              </div>
+              <div class="lv-readable-content">{{ limitedNoteContent() }}</div>
+              <div *ngIf="isNoteTruncated()" class="lv-preview-limit-notice">
+                This note is long, so the preview is limited for performance.
+              </div>
+            </article>
+
+            <section *ngSwitchCase="'SNIPPET'" class="lv-code-panel">
+              <div class="lv-code-toolbar">
+                <div>
+                  <strong>{{ resource.codeLanguage || 'Code snippet' }}</strong>
+                  <span>{{ snippetLines().length }} visible lines</span>
+                </div>
+                <button class="lv-detail-action compact" type="button" (click)="copySnippet()">
+                  <span class="material-symbols-outlined">content_copy</span>
+                  {{ snippetCopyState || 'Copy' }}
+                </button>
+              </div>
+              <div class="lv-code-window">
+                <div *ngFor="let line of snippetLines(); let index = index; trackBy: trackByLineIndex" class="lv-code-line">
+                  <span class="lv-line-number">{{ index + 1 }}</span>
+                  <code>{{ line || ' ' }}</code>
                 </div>
               </div>
+              <div *ngIf="isSnippetTruncated()" class="lv-preview-limit-notice">
+                Only the first {{ previewLineLimit }} lines are shown to keep the page fast.
+              </div>
+            </section>
 
-              <div *ngSwitchCase="'NOTE'" class="lv-soft-panel p-4" style="white-space:pre-wrap;line-height:1.7">{{ resource.content || 'No content' }}</div>
+            <div *ngSwitchCase="'FILE'" class="lv-file-preview-shell">
+              <div class="lv-preview-tabs" role="tablist">
+                <button class="lv-preview-tab" [class.active]="activeFileTab === 'preview'" type="button" (click)="activeFileTab = 'preview'">
+                  <span class="material-symbols-outlined">visibility</span>
+                  Preview
+                </button>
+                <button class="lv-preview-tab" [class.active]="activeFileTab === 'insights'" type="button" (click)="activeFileTab = 'insights'">
+                  <span class="material-symbols-outlined">analytics</span>
+                  Insights
+                </button>
+              </div>
 
-              <pre *ngSwitchCase="'SNIPPET'" class="lv-code-preview"><code>{{ resource.content || '// No code' }}</code></pre>
+              <div *ngIf="fileLoading || !preview" class="lv-preview-loading">
+                <span class="lv-spinner"></span>
+                Preparing secure preview...
+              </div>
 
-              <div *ngSwitchCase="'FILE'" class="lv-soft-panel p-3 p-md-4">
-                <div class="lv-segmented mb-3" role="tablist">
-                  <button class="lv-segmented-item" [class.active]="activeFileTab === 'preview'" type="button" (click)="activeFileTab = 'preview'">
-                    <span class="material-symbols-outlined" style="font-size:18px">visibility</span>
-                    Preview
-                  </button>
-                  <button class="lv-segmented-item" [class.active]="activeFileTab === 'insights'" type="button" (click)="activeFileTab = 'insights'">
-                    Insights
-                  </button>
-                </div>
+              <ng-container *ngIf="preview && !fileLoading">
+                <ng-container *ngIf="activeFileTab === 'preview'; else fileInsightsTpl">
+                  <div *ngIf="isImage()" class="lv-image-preview-frame">
+                    <img [src]="previewBlobUrl || ''" [alt]="resource.title" />
+                  </div>
 
-                <div *ngIf="fileLoading || !preview" class="lv-empty-state py-4">
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                  Preparing secure file preview...
-                </div>
+                  <iframe *ngIf="isPdf() && safePreviewUrl" class="lv-pdf-preview-frame" [src]="safePreviewUrl" title="PDF preview"></iframe>
 
-                <ng-container *ngIf="preview && !fileLoading">
-                  <ng-container *ngIf="activeFileTab === 'preview'; else fileInsightsTpl">
-                    <img *ngIf="isImage()" class="img-fluid rounded-3 bg-white" [src]="previewBlobUrl || ''" [alt]="resource.title" />
-                    <iframe *ngIf="isPdf() && safePreviewUrl" class="w-100 rounded-3 border bg-white lv-pdf-frame" [src]="safePreviewUrl" title="PDF preview"></iframe>
-
-                    <article *ngIf="isDocxPreview()" class="lv-doc-page">
-                      <div class="d-flex align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
-                        <div class="min-w-0">
-                          <strong class="d-block text-truncate">{{ documentPreview?.title || resource.title }}</strong>
-                          <small class="lv-muted">{{ documentPreview?.paragraphCount || 0 }} paragraphs extracted from DOCX</small>
-                        </div>
-                        <span class="badge rounded-pill lv-badge-soft lv-chip flex-shrink-0">DOCX Live Preview</span>
+                  <article *ngIf="isDocxPreview()" class="lv-doc-preview-panel">
+                    <div class="lv-doc-preview-header">
+                      <div>
+                        <strong>{{ documentPreview?.title || resource.title }}</strong>
+                        <span>{{ documentPreview?.paragraphCount || 0 }} paragraphs extracted</span>
                       </div>
-                      <div class="lv-doc-content">{{ documentPreview?.plainText || 'No readable text found in this DOCX file.' }}</div>
-                    </article>
-
-                    <div *ngIf="isDocxLoading()" class="lv-empty-state py-4">
-                      <span class="spinner-border spinner-border-sm me-2"></span>
-                      Rendering DOCX preview...
+                      <span class="lv-status-pill strong">DOCX</span>
                     </div>
+                    <div class="lv-doc-preview-content">{{ visibleDocumentText() }}</div>
+                    <div *ngIf="isDocumentPreviewTruncated()" class="lv-preview-limit-notice">
+                      DOCX preview is limited to {{ docPreviewMaxChars | number }} characters. Download the file to read everything.
+                    </div>
+                  </article>
 
-                    <pre *ngIf="isTextPreview() && !textError" class="lv-code-preview"><code>{{ textPreview || 'Loading text preview...' }}</code></pre>
+                  <div *ngIf="isDocxLoading()" class="lv-preview-loading compact">
+                    <span class="lv-spinner"></span>
+                    Rendering DOCX preview...
+                  </div>
 
-                    <div *ngIf="documentError || textError" class="alert alert-warning mb-3">{{ documentError || textError }}</div>
-
-                    <div *ngIf="(!hasInlinePreview() && !isDocxLoading()) || documentError || textError" class="lv-file-fallback d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
-                      <div class="d-flex align-items-center gap-3 min-w-0">
-                        <span class="lv-icon-box">
-                          <span class="material-symbols-outlined">{{ fileIcon() }}</span>
-                        </span>
-                        <div class="min-w-0">
-                          <strong class="d-block text-truncate">{{ preview.fileName || resource.fileName || resource.title }}</strong>
-                          <small class="lv-muted d-block text-truncate">{{ preview.mimeType || 'Unknown file type' }}</small>
-                          <small class="lv-muted d-block text-break">{{ preview.reason || documentError || textError || 'Inline preview is not available for this file yet.' }}</small>
-                        </div>
+                  <section *ngIf="isTextPreview() && !textError" class="lv-code-panel">
+                    <div class="lv-code-toolbar">
+                      <div>
+                        <strong>{{ preview.fileName || resource.fileName || resource.title }}</strong>
+                        <span>{{ textPreviewSummary() }}</span>
                       </div>
-                      <button class="btn btn-outline-primary flex-shrink-0" type="button" (click)="downloadFile()">
-                        Download file
-                        <span class="material-symbols-outlined ms-1" style="font-size:16px">download</span>
+                      <button class="lv-detail-action compact" type="button" (click)="copyVisibleTextPreview()" [disabled]="!textPreviewLines.length">
+                        <span class="material-symbols-outlined">content_copy</span>
+                        {{ textPreviewCopyState || 'Copy visible' }}
                       </button>
                     </div>
-                  </ng-container>
-
-                  <ng-template #fileInsightsTpl>
-                    <div class="row g-3">
-                      <div class="col-sm-6 col-xl-4" *ngFor="let item of fileInsights()">
-                        <div class="lv-insight-tile h-100">
-                          <span class="material-symbols-outlined lv-primary">{{ item.icon }}</span>
-                          <small class="lv-muted d-block">{{ item.label }}</small>
-                          <strong class="d-block text-break">{{ item.value }}</strong>
-                        </div>
+                    <div class="lv-code-window limited">
+                      <div *ngFor="let line of textPreviewLines; let index = index; trackBy: trackByLineIndex" class="lv-code-line">
+                        <span class="lv-line-number">{{ index + 1 }}</span>
+                        <code>{{ line || ' ' }}</code>
                       </div>
                     </div>
-
-                    <div class="lv-demo-strip mt-3">
-                      <span class="material-symbols-outlined">verified_user</span>
-                      <span>Owner-only preview via backend proxy. No public token is exposed in the iframe.</span>
+                    <div *ngIf="textPreviewLines.length === 0" class="lv-empty-inline">No readable text found in this file.</div>
+                    <div *ngIf="textPreviewTruncated" class="lv-preview-limit-notice strong">
+                      This file is large. Showing only the first {{ previewLineLimit }} lines or {{ previewByteLimitLabel() }} so the browser stays smooth.
+                      Use Download/Open for the full file.
                     </div>
-                  </ng-template>
+                  </section>
+
+                  <div *ngIf="documentError || textError" class="lv-inline-warning">
+                    <span class="material-symbols-outlined">info</span>
+                    {{ documentError || textError }}
+                  </div>
+
+                  <div *ngIf="(!hasInlinePreview() && !isDocxLoading()) || documentError || textError" class="lv-file-fallback">
+                    <span class="lv-file-fallback-icon">
+                      <span class="material-symbols-outlined">{{ fileIcon() }}</span>
+                    </span>
+                    <div>
+                      <strong>{{ preview.fileName || resource.fileName || resource.title }}</strong>
+                      <span>{{ preview.mimeType || 'Unknown file type' }}</span>
+                      <p>{{ preview.reason || documentError || textError || 'Inline preview is not available for this file yet.' }}</p>
+                    </div>
+                    <button class="lv-detail-action primary" type="button" (click)="downloadFile()">
+                      <span class="material-symbols-outlined">download</span>
+                      Download
+                    </button>
+                  </div>
                 </ng-container>
-              </div>
-            </ng-container>
-          </article>
-        </div>
-      </div>
+
+                <ng-template #fileInsightsTpl>
+                  <div class="lv-insight-grid">
+                    <div class="lv-insight-tile" *ngFor="let item of fileInsights()">
+                      <span class="material-symbols-outlined">{{ item.icon }}</span>
+                      <small>{{ item.label }}</small>
+                      <strong>{{ item.value }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="lv-secure-note">
+                    <span class="material-symbols-outlined">verified_user</span>
+                    <span>Preview is served through the backend proxy. Raw storage URLs stay behind authenticated access.</span>
+                  </div>
+                </ng-template>
+              </ng-container>
+            </div>
+          </ng-container>
+        </section>
+      </main>
     </section>
 
     <div class="lv-modal-backdrop" *ngIf="editOpen" (click)="editOpen = false">
-      <section class="lv-modal-card p-4" (click)="$event.stopPropagation()">
-        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-          <h2 class="lv-section-title">Edit resource</h2>
+      <section class="lv-modal-card lv-resource-edit-modal" (click)="$event.stopPropagation()">
+        <div class="lv-modal-header-clean">
+          <div>
+            <h2>Edit resource</h2>
+            <p>Update metadata without changing the current workspace context.</p>
+          </div>
           <button class="lv-icon-button" type="button" (click)="editOpen = false"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <form class="row g-3" (ngSubmit)="saveEdit()">
-          <div class="col-md-7"><label class="form-label fw-semibold">Title</label><input class="form-control" name="title" required [(ngModel)]="editForm.title" /></div>
-          <div class="col-md-5" *ngIf="resource?.resourceType === 'LINK'"><label class="form-label fw-semibold">Source</label><input class="form-control" name="sourceName" [(ngModel)]="editForm.sourceName" /></div>
-          <div class="col-12"><label class="form-label fw-semibold">Description</label><textarea class="form-control" name="description" rows="2" [(ngModel)]="editForm.description"></textarea></div>
-          <div class="col-12" *ngIf="resource?.resourceType === 'LINK'"><label class="form-label fw-semibold">URL</label><input class="form-control" name="url" type="url" [(ngModel)]="editForm.url" /></div>
-          <div class="col-md-5" *ngIf="resource?.resourceType === 'SNIPPET'"><label class="form-label fw-semibold">Language</label><input class="form-control" name="codeLanguage" [(ngModel)]="editForm.codeLanguage" /></div>
-          <div class="col-12" *ngIf="resource?.resourceType === 'NOTE' || resource?.resourceType === 'SNIPPET'"><label class="form-label fw-semibold">Content</label><textarea class="form-control" name="content" rows="8" [(ngModel)]="editForm.content"></textarea></div>
-          <div class="col-12 lv-form-actions"><button class="btn btn-outline-secondary" type="button" (click)="editOpen = false">Cancel</button><button class="btn btn-primary" type="submit">Save changes</button></div>
+
+        <form class="lv-edit-form" (ngSubmit)="saveEdit()">
+          <label>
+            <span>Title</span>
+            <input class="lv-input" name="title" required [(ngModel)]="editForm.title" />
+          </label>
+
+          <label *ngIf="resource?.resourceType === 'LINK'">
+            <span>Source</span>
+            <input class="lv-input" name="sourceName" [(ngModel)]="editForm.sourceName" />
+          </label>
+
+          <label class="wide">
+            <span>Description</span>
+            <textarea class="lv-input" name="description" rows="3" [(ngModel)]="editForm.description"></textarea>
+          </label>
+
+          <label class="wide" *ngIf="resource?.resourceType === 'LINK'">
+            <span>URL</span>
+            <input class="lv-input" name="url" type="url" [(ngModel)]="editForm.url" />
+          </label>
+
+          <label *ngIf="resource?.resourceType === 'SNIPPET'">
+            <span>Language</span>
+            <input class="lv-input" name="codeLanguage" [(ngModel)]="editForm.codeLanguage" />
+          </label>
+
+          <label class="wide" *ngIf="resource?.resourceType === 'NOTE' || resource?.resourceType === 'SNIPPET'">
+            <span>Content</span>
+            <textarea class="lv-input mono" name="content" rows="10" [(ngModel)]="editForm.content"></textarea>
+          </label>
+
+          <div class="lv-form-actions wide">
+            <button class="lv-detail-action" type="button" (click)="editOpen = false">Cancel</button>
+            <button class="lv-detail-action primary" type="submit">Save changes</button>
+          </div>
         </form>
       </section>
     </div>
 
-    <app-share-dialog 
+    <app-share-dialog
       *ngIf="shareModalOpen && resource"
       [title]="resource.title"
       [currentAccess]="resource.publicAccess"
@@ -280,8 +423,8 @@ type FileTab = 'preview' | 'insights';
     />
 
     <ng-template #loadingTpl>
-      <div class="lv-card p-4">
-        <span class="spinner-border spinner-border-sm me-2"></span>
+      <div class="lv-resource-skeleton">
+        <span class="lv-spinner"></span>
         Loading resource...
       </div>
     </ng-template>
@@ -296,6 +439,12 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
   protected safePreviewUrl?: SafeResourceUrl;
   protected previewBlobUrl = '';
   protected textPreview = '';
+  protected textPreviewLines: string[] = [];
+  protected textPreviewLoadedBytes = 0;
+  protected textPreviewSourceBytes = 0;
+  protected textPreviewTruncated = false;
+  protected textPreviewCopyState = '';
+  protected snippetCopyState = '';
   protected textError = '';
   protected documentError = '';
   protected documentLoading = false;
@@ -307,6 +456,8 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
   protected error = '';
   protected editOpen = false;
   protected editForm: ResourceRequest = this.emptyEditForm();
+  protected readonly previewLineLimit = TEXT_PREVIEW_MAX_LINES;
+  protected readonly docPreviewMaxChars = DOC_PREVIEW_MAX_CHARS;
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
@@ -348,12 +499,18 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
 
   protected favorite(): void {
     if (!this.resource) return;
-    this.resourceService.toggleFavorite(this.resource.id).subscribe({ next: (resource) => (this.resource = resource), error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update favorite') });
+    this.resourceService.toggleFavorite(this.resource.id).subscribe({
+      next: (resource) => (this.resource = resource),
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update favorite')
+    });
   }
 
   protected archive(): void {
     if (!this.resource) return;
-    this.resourceService.toggleArchive(this.resource.id).subscribe({ next: (resource) => (this.resource = resource), error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update archive') });
+    this.resourceService.toggleArchive(this.resource.id).subscribe({
+      next: (resource) => (this.resource = resource),
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update archive')
+    });
   }
 
   protected delete(): void {
@@ -425,12 +582,21 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
 
   protected attachTag(): void {
     if (!this.resource || !this.selectedTagId) return;
-    this.resourceService.attachTag(this.resource.id, this.selectedTagId).subscribe({ next: (resource) => { this.resource = resource; this.selectedTagId = ''; }, error: (error) => (this.error = error instanceof Error ? error.message : 'Could not attach tag') });
+    this.resourceService.attachTag(this.resource.id, this.selectedTagId).subscribe({
+      next: (resource) => {
+        this.resource = resource;
+        this.selectedTagId = '';
+      },
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not attach tag')
+    });
   }
 
   protected detachTag(tag: Tag): void {
     if (!this.resource) return;
-    this.resourceService.detachTag(this.resource.id, tag.id).subscribe({ next: (resource) => (this.resource = resource), error: (error) => (this.error = error instanceof Error ? error.message : 'Could not remove tag') });
+    this.resourceService.detachTag(this.resource.id, tag.id).subscribe({
+      next: (resource) => (this.resource = resource),
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not remove tag')
+    });
   }
 
   protected isImage(): boolean {
@@ -473,6 +639,30 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
     if (TEXT_PREVIEW_EXTENSIONS.includes(extension)) return 'code';
     if (IMAGE_EXTENSIONS.includes(extension)) return 'image';
     return 'draft';
+  }
+
+  protected resourceIcon(): string {
+    if (!this.resource) return 'draft';
+    if (this.resource.resourceType === 'LINK') return 'link';
+    if (this.resource.resourceType === 'NOTE') return 'notes';
+    if (this.resource.resourceType === 'SNIPPET') return 'code_blocks';
+    return this.fileIcon();
+  }
+
+  protected fallbackDescription(): string {
+    if (!this.resource) return 'No description provided.';
+    if (this.resource.resourceType === 'FILE') return 'File stored securely in this workspace.';
+    if (this.resource.resourceType === 'LINK') return 'Saved link with reusable metadata and preview.';
+    if (this.resource.resourceType === 'SNIPPET') return 'Saved code snippet for later reference.';
+    return 'No description provided.';
+  }
+
+  protected previewSubtitle(): string {
+    if (!this.resource) return '';
+    if (this.resource.resourceType === 'FILE') return 'Fast, limited preview that keeps large files from freezing the browser.';
+    if (this.resource.resourceType === 'LINK') return 'Review the saved URL metadata and open the original source.';
+    if (this.resource.resourceType === 'SNIPPET') return 'Code viewer with a safe line limit for long snippets.';
+    return 'Readable note view with clean spacing.';
   }
 
   protected canOpenFile(): boolean {
@@ -538,6 +728,33 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
       });
   }
 
+  protected copyVisibleTextPreview(): void {
+    if (!this.textPreviewLines.length) return;
+    this.copyToClipboard(this.textPreviewLines.join('\n'))
+      .then(() => {
+        this.textPreviewCopyState = 'Copied';
+        window.setTimeout(() => (this.textPreviewCopyState = ''), 1600);
+      })
+      .catch(() => {
+        this.textPreviewCopyState = 'Copy failed';
+        window.setTimeout(() => (this.textPreviewCopyState = ''), 1600);
+      });
+  }
+
+  protected copySnippet(): void {
+    const content = this.resource?.content || '';
+    if (!content) return;
+    this.copyToClipboard(content)
+      .then(() => {
+        this.snippetCopyState = 'Copied';
+        window.setTimeout(() => (this.snippetCopyState = ''), 1600);
+      })
+      .catch(() => {
+        this.snippetCopyState = 'Copy failed';
+        window.setTimeout(() => (this.snippetCopyState = ''), 1600);
+      });
+  }
+
   protected refreshLinkPreview(): void {
     if (!this.resource || this.resource.resourceType !== 'LINK' || this.linkPreviewRefreshing) {
       return;
@@ -562,10 +779,10 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
 
     return [
       { icon: 'extension', label: 'Format', value: this.previewExtension().toUpperCase() || 'UNKNOWN' },
-      { icon: 'deployed_code', label: 'Preview engine', value: this.previewEngineLabel() },
+      { icon: 'visibility', label: 'Preview mode', value: this.previewEngineLabel() },
       { icon: 'hard_drive', label: 'Size', value: this.formatFileSize(this.resource.fileSize) },
       { icon: 'cloud_done', label: 'Storage', value: this.resource.storageProvider || 'Cloud storage' },
-      { icon: 'lock', label: 'Access', value: 'Authenticated owner only' },
+      { icon: 'lock', label: 'Access', value: 'Workspace authenticated' },
       { icon: 'history', label: 'Updated', value: new Date(this.resource.updatedAt).toLocaleString() }
     ];
   }
@@ -575,6 +792,48 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
     if (size < 1024) return `${size} B`;
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  protected textPreviewSummary(): string {
+    if (!this.textPreviewLines.length) return 'No visible lines loaded';
+    const bytes = this.textPreviewLoadedBytes ? this.formatFileSize(this.textPreviewLoadedBytes) : 'preview chunk';
+    const source = this.textPreviewSourceBytes ? this.formatFileSize(this.textPreviewSourceBytes) : 'unknown size';
+    return `${this.textPreviewLines.length} lines shown · ${bytes} of ${source}`;
+  }
+
+  protected previewByteLimitLabel(): string {
+    return this.formatFileSize(TEXT_PREVIEW_MAX_BYTES);
+  }
+
+  protected visibleDocumentText(): string {
+    const text = this.documentPreview?.plainText || 'No readable text found in this DOCX file.';
+    return text.length > DOC_PREVIEW_MAX_CHARS ? `${text.slice(0, DOC_PREVIEW_MAX_CHARS)}\n\n...` : text;
+  }
+
+  protected isDocumentPreviewTruncated(): boolean {
+    return (this.documentPreview?.plainText?.length || 0) > DOC_PREVIEW_MAX_CHARS;
+  }
+
+  protected limitedNoteContent(): string {
+    const content = this.resource?.content || 'No content';
+    return content.length > NOTE_PREVIEW_MAX_CHARS ? `${content.slice(0, NOTE_PREVIEW_MAX_CHARS)}\n\n...` : content;
+  }
+
+  protected isNoteTruncated(): boolean {
+    return (this.resource?.content?.length || 0) > NOTE_PREVIEW_MAX_CHARS;
+  }
+
+  protected snippetLines(): string[] {
+    const content = this.resource?.content || '// No code';
+    return this.toLines(content).slice(0, TEXT_PREVIEW_MAX_LINES);
+  }
+
+  protected isSnippetTruncated(): boolean {
+    return this.toLines(this.resource?.content || '').length > TEXT_PREVIEW_MAX_LINES;
+  }
+
+  protected trackByLineIndex(index: number): number {
+    return index;
   }
 
   private loadResource(): void {
@@ -588,12 +847,14 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
     this.safePreviewUrl = undefined;
     this.clearBlobUrl();
     this.fileBlob = undefined;
-    this.textPreview = '';
-    this.textError = '';
+    this.resetTextPreviewState();
     this.documentError = '';
     this.documentLoading = false;
     this.fileLoading = false;
     this.linkCopyState = '';
+    this.copyState = '';
+    this.snippetCopyState = '';
+    this.textPreviewCopyState = '';
     this.linkPreviewRefreshing = false;
     this.activeFileTab = 'preview';
     this.error = '';
@@ -638,8 +899,7 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
 
   private loadFilePreview(resourceId: string, requestId: number): void {
     this.fileLoading = true;
-    this.textPreview = '';
-    this.textError = '';
+    this.resetTextPreviewState();
     this.documentPreview = undefined;
     this.documentError = '';
     this.documentLoading = false;
@@ -675,13 +935,22 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadTextPreview(blob: Blob, requestId: number): void {
-    this.textPreview = '';
-    this.textError = '';
-    blob.text()
+    this.resetTextPreviewState();
+    const previewBytes = Math.min(blob.size, TEXT_PREVIEW_MAX_BYTES);
+    const previewBlob = blob.slice(0, previewBytes);
+
+    previewBlob.text()
       .then((text) => {
-        if (requestId === this.loadRequestId) {
-          this.textPreview = text;
+        if (requestId !== this.loadRequestId) {
+          return;
         }
+
+        const allLoadedLines = this.toLines(text);
+        this.textPreviewLoadedBytes = previewBytes;
+        this.textPreviewSourceBytes = blob.size;
+        this.textPreviewLines = allLoadedLines.slice(0, TEXT_PREVIEW_MAX_LINES);
+        this.textPreview = this.textPreviewLines.join('\n');
+        this.textPreviewTruncated = blob.size > TEXT_PREVIEW_MAX_BYTES || allLoadedLines.length > TEXT_PREVIEW_MAX_LINES;
       })
       .catch(() => {
         if (requestId === this.loadRequestId) {
@@ -744,10 +1013,10 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
   }
 
   private previewEngineLabel(): string {
-    if (this.isPdf()) return 'PDF iframe via secure blob';
+    if (this.isPdf()) return 'PDF secure iframe';
     if (this.isDocxPreview()) return 'DOCX text extraction';
-    if (this.isImage()) return 'Image blob preview';
-    if (this.isTextPreview()) return 'Text/code reader';
+    if (this.isImage()) return 'Image viewer';
+    if (this.isTextPreview()) return 'Limited text/code viewer';
     return 'Download fallback';
   }
 
@@ -778,5 +1047,18 @@ export class ResourceDetailComponent implements OnInit, OnDestroy {
     }
 
     return fileName.slice(dotIndex + 1).toLowerCase();
+  }
+
+  private toLines(value: string): string[] {
+    return value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  }
+
+  private resetTextPreviewState(): void {
+    this.textPreview = '';
+    this.textPreviewLines = [];
+    this.textPreviewLoadedBytes = 0;
+    this.textPreviewSourceBytes = 0;
+    this.textPreviewTruncated = false;
+    this.textError = '';
   }
 }

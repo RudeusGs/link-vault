@@ -10,65 +10,141 @@ import { AuthService } from '../../core/auth/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <main class="lv-auth-bg d-flex align-items-center justify-content-center p-3">
-      <section class="lv-auth-card p-4 p-md-5">
-        <div class="text-center mb-4">
-          <div class="d-inline-flex align-items-center justify-content-center lv-primary-bg rounded-3 shadow-sm mb-3" style="width:52px;height:52px">
-            <span class="material-symbols-outlined" style="font-size:30px">inventory_2</span>
-          </div>
-          <h1 class="lv-section-title lv-primary mb-1">LinkVault</h1>
-          <p class="lv-muted mb-0">Create your professional resource hub</p>
-        </div>
+    <main class="lv-auth-page">
+      <section class="lv-auth-shell lv-auth-shell-register">
+        <aside class="lv-auth-info" aria-label="LinkVault overview">
+          <a class="lv-auth-logo" routerLink="/">
+            <span class="lv-auth-logo-mark">L</span>
+            <span>LinkVault</span>
+          </a>
 
-        <form class="d-grid gap-3" (ngSubmit)="register()">
-          <div *ngIf="error" class="alert alert-danger py-2 mb-0">{{ error }}</div>
-
-          <div>
-            <label class="form-label fw-semibold">Username</label>
-            <div class="position-relative">
-              <span class="material-symbols-outlined lv-input-icon">alternate_email</span>
-              <input class="form-control lv-input-with-icon" name="username" required placeholder="johndoe" [(ngModel)]="form.username" (blur)="checkAvailability()" />
-            </div>
-            <small *ngIf="availabilityMessage" [class.text-success]="availabilityOk" [class.text-danger]="!availabilityOk">{{ availabilityMessage }}</small>
+          <div class="lv-auth-info-copy">
+            <p class="lv-auth-kicker">Start clean</p>
+            <h1>Create a workspace that your future self can actually use.</h1>
+            <p>
+              Save important links, documents and snippets into a professional system from day one.
+            </p>
           </div>
 
-          <div>
-            <label class="form-label fw-semibold">Email</label>
-            <div class="position-relative">
-              <span class="material-symbols-outlined lv-input-icon">mail</span>
-              <input class="form-control lv-input-with-icon" name="email" required type="email" placeholder="you@gmail.com" [(ngModel)]="form.email" (blur)="checkAvailability()" />
+          <div class="lv-auth-summary-card">
+            <div>
+              <strong>Default setup</strong>
+              <span>Personal workspace, vaults, tags and file previews.</span>
             </div>
+            <span class="material-symbols-outlined">check_circle</span>
           </div>
+        </aside>
 
-          <div>
-            <label class="form-label fw-semibold">Display name</label>
-            <div class="position-relative">
-              <span class="material-symbols-outlined lv-input-icon">badge</span>
-              <input class="form-control lv-input-with-icon" name="displayName" required placeholder="Nguyễn Văn A" [(ngModel)]="form.displayName" />
+        <section class="lv-auth-form-panel" aria-label="Create account form">
+          <div class="lv-auth-form-card lv-auth-form-card-wide">
+            <div class="lv-auth-form-head">
+              <span class="lv-auth-pill">Create account</span>
+              <h2>Set up LinkVault</h2>
+              <p>Use a username for login. Email is used for workspace invites and account metadata.</p>
             </div>
+
+            <form class="lv-auth-form" (ngSubmit)="register()" novalidate>
+              <div *ngIf="error" class="lv-auth-alert" role="alert">{{ error }}</div>
+
+              <label class="lv-auth-field">
+                <span>Username</span>
+                <div class="lv-auth-input-wrap">
+                  <span class="material-symbols-outlined">alternate_email</span>
+                  <input
+                    class="lv-auth-input"
+                    name="username"
+                    required
+                    autocomplete="username"
+                    placeholder="johndoe"
+                    [(ngModel)]="form.username"
+                    (blur)="checkAvailability()"
+                  />
+                </div>
+              </label>
+
+              <label class="lv-auth-field">
+                <span>Email</span>
+                <div class="lv-auth-input-wrap">
+                  <span class="material-symbols-outlined">mail</span>
+                  <input
+                    class="lv-auth-input"
+                    name="email"
+                    required
+                    type="email"
+                    autocomplete="email"
+                    placeholder="you@gmail.com"
+                    [(ngModel)]="form.email"
+                    (blur)="checkAvailability()"
+                  />
+                </div>
+              </label>
+
+              <label class="lv-auth-field">
+                <span>Display name</span>
+                <div class="lv-auth-input-wrap">
+                  <span class="material-symbols-outlined">badge</span>
+                  <input
+                    class="lv-auth-input"
+                    name="displayName"
+                    required
+                    autocomplete="name"
+                    placeholder="Nguyễn Văn A"
+                    [(ngModel)]="form.displayName"
+                  />
+                </div>
+              </label>
+
+              <div *ngIf="availabilityMessage" class="lv-auth-hint" [class.success]="availabilityOk" [class.error]="!availabilityOk">
+                {{ availabilityMessage }}
+              </div>
+
+              <div class="lv-auth-grid-2">
+                <label class="lv-auth-field">
+                  <span>Password</span>
+                  <div class="lv-auth-input-wrap">
+                    <span class="material-symbols-outlined">lock</span>
+                    <input
+                      class="lv-auth-input"
+                      name="password"
+                      required
+                      type="password"
+                      minlength="6"
+                      autocomplete="new-password"
+                      placeholder="••••••••"
+                      [(ngModel)]="form.password"
+                    />
+                  </div>
+                </label>
+
+                <label class="lv-auth-field">
+                  <span>Confirm password</span>
+                  <div class="lv-auth-input-wrap">
+                    <span class="material-symbols-outlined">verified_user</span>
+                    <input
+                      class="lv-auth-input"
+                      name="confirmPassword"
+                      required
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="••••••••"
+                      [(ngModel)]="confirmPassword"
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <button class="lv-auth-submit" type="submit" [disabled]="loading || !passwordsMatch">
+                <span *ngIf="loading" class="lv-auth-spinner" aria-hidden="true"></span>
+                <span>{{ loading ? 'Creating account...' : 'Create account' }}</span>
+              </button>
+            </form>
+
+            <p class="lv-auth-switch">
+              Already have an account?
+              <a routerLink="/login">Sign in</a>
+            </p>
           </div>
-
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Password</label>
-              <input class="form-control" name="password" required type="password" minlength="6" placeholder="••••••••" [(ngModel)]="form.password" />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Confirm</label>
-              <input class="form-control" name="confirmPassword" required type="password" placeholder="••••••••" [(ngModel)]="confirmPassword" />
-            </div>
-          </div>
-
-          <button class="btn btn-primary py-2 fw-semibold mt-2" type="submit" [disabled]="loading || !passwordsMatch">
-            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-            Create account
-          </button>
-        </form>
-
-        <div class="text-center mt-4 pt-3 border-top">
-          <span class="lv-muted">Already have an account?</span>
-          <a class="lv-primary fw-semibold ms-1" routerLink="/login">Sign in</a>
-        </div>
+        </section>
       </section>
     </main>
   `

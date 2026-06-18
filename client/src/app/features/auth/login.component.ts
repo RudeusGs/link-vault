@@ -10,48 +10,110 @@ import { AuthService } from '../../core/auth/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <main class="lv-auth-bg d-flex align-items-center justify-content-center p-3">
-      <section class="lv-auth-card p-4 p-md-5">
-        <div class="text-center mb-4">
-          <div class="d-inline-flex align-items-center justify-content-center lv-primary-bg rounded-3 shadow-sm mb-3" style="width:52px;height:52px">
-            <span class="material-symbols-outlined" style="font-size:30px">shield</span>
+    <main class="lv-auth-page">
+      <section class="lv-auth-shell">
+        <aside class="lv-auth-info" aria-label="LinkVault overview">
+          <a class="lv-auth-logo" routerLink="/">
+            <span class="lv-auth-logo-mark">L</span>
+            <span>LinkVault</span>
+          </a>
+
+          <div class="lv-auth-info-copy">
+            <p class="lv-auth-kicker">Workspace resource hub</p>
+            <h1>Organize links, files and notes without the noise.</h1>
+            <p>
+              Keep every project resource searchable, shareable and grouped by workspace.
+              No messy bookmark folders, no random files lost in chat.
+            </p>
           </div>
-          <h1 class="lv-section-title lv-primary mb-1">LinkVault</h1>
-          <p class="lv-muted mb-0">Your secure digital library</p>
-        </div>
 
-        <form class="d-grid gap-3" (ngSubmit)="login()">
-          <div *ngIf="error" class="alert alert-danger py-2 mb-0">{{ error }}</div>
+          <div class="lv-auth-benefits">
+            <article>
+              <span class="material-symbols-outlined">folder_managed</span>
+              <div>
+                <strong>Vault structure</strong>
+                <small>Group resources by workspace, vault and folder.</small>
+              </div>
+            </article>
+            <article>
+              <span class="material-symbols-outlined">manage_search</span>
+              <div>
+                <strong>Fast retrieval</strong>
+                <small>Find links, docs and snippets from one clean place.</small>
+              </div>
+            </article>
+            <article>
+              <span class="material-symbols-outlined">group</span>
+              <div>
+                <strong>Team ready</strong>
+                <small>Invite members and manage shared workspaces.</small>
+              </div>
+            </article>
+          </div>
+        </aside>
 
-          <div>
-            <label class="form-label fw-semibold">Username</label>
-            <div class="position-relative">
-              <span class="material-symbols-outlined lv-input-icon">person</span>
-              <input class="form-control lv-input-with-icon" name="username" required autocomplete="username" placeholder="quan1908" [(ngModel)]="username" />
+        <section class="lv-auth-form-panel" aria-label="Sign in form">
+          <div class="lv-auth-form-card">
+            <div class="lv-auth-form-head">
+              <span class="lv-auth-pill">Sign in</span>
+              <h2>Welcome back</h2>
+              <p>Enter your username and password to continue.</p>
             </div>
-          </div>
 
-          <div>
-            <label class="form-label fw-semibold">Password</label>
-            <div class="position-relative">
-              <span class="material-symbols-outlined lv-input-icon">lock</span>
-              <input class="form-control lv-input-with-icon" name="password" required autocomplete="current-password" placeholder="••••••••" [type]="showPassword ? 'text' : 'password'" [(ngModel)]="password" />
-              <button class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 border-0" type="button" (click)="showPassword = !showPassword">
-                <span class="material-symbols-outlined" style="font-size:20px">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+            <form class="lv-auth-form" (ngSubmit)="login()" novalidate>
+              <div *ngIf="error" class="lv-auth-alert" role="alert">{{ error }}</div>
+
+              <label class="lv-auth-field">
+                <span>Username</span>
+                <div class="lv-auth-input-wrap">
+                  <span class="material-symbols-outlined">person</span>
+                  <input
+                    class="lv-auth-input"
+                    name="username"
+                    required
+                    autocomplete="username"
+                    placeholder="quan1908"
+                    [(ngModel)]="username"
+                  />
+                </div>
+              </label>
+
+              <label class="lv-auth-field">
+                <span>Password</span>
+                <div class="lv-auth-input-wrap">
+                  <span class="material-symbols-outlined">lock</span>
+                  <input
+                    class="lv-auth-input has-toggle"
+                    name="password"
+                    required
+                    autocomplete="current-password"
+                    placeholder="••••••••"
+                    [type]="showPassword ? 'text' : 'password'"
+                    [(ngModel)]="password"
+                  />
+                  <button
+                    class="lv-auth-toggle"
+                    type="button"
+                    [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+                    (click)="showPassword = !showPassword"
+                  >
+                    <span class="material-symbols-outlined">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </label>
+
+              <button class="lv-auth-submit" type="submit" [disabled]="loading">
+                <span *ngIf="loading" class="lv-auth-spinner" aria-hidden="true"></span>
+                <span>{{ loading ? 'Signing in...' : 'Sign in' }}</span>
               </button>
-            </div>
+            </form>
+
+            <p class="lv-auth-switch">
+              New to LinkVault?
+              <a routerLink="/register">Create an account</a>
+            </p>
           </div>
-
-          <button class="btn btn-primary py-2 fw-semibold" type="submit" [disabled]="loading">
-            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-            Sign in
-          </button>
-        </form>
-
-        <div class="text-center mt-4 pt-3 border-top">
-          <span class="lv-muted">New to LinkVault?</span>
-          <a class="lv-primary fw-semibold ms-1" routerLink="/register">Create account</a>
-        </div>
+        </section>
       </section>
     </main>
   `
@@ -84,4 +146,3 @@ export class LoginComponent {
     });
   }
 }
-

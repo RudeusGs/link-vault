@@ -42,6 +42,11 @@ public class WorkspaceInvitationController {
         return ApiResponse.success("Workspace invitation cancelled", null);
     }
 
+    @GetMapping("/api/workspace-invitations/pending")
+    public ApiResponse<List<WorkspaceInvitationResponse>> pendingForCurrentUser() {
+        return ApiResponse.success("Pending workspace invitations loaded", invitationService.pendingForCurrentUser());
+    }
+
     @PostMapping("/api/workspace-invitations/{token}/accept")
     public ApiResponse<WorkspaceInvitationResponse> accept(@PathVariable String token) {
         return ApiResponse.success("Workspace invitation accepted", invitationService.accept(token));

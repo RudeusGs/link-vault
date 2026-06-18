@@ -66,6 +66,32 @@ public class WorkspaceInvitationService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<WorkspaceInvitationResponse> pendingForCurrentUser() {
+        User user = userContextService.getCurrentUser();
+        List<String> identifiers = List.of(
+            normalizeLookupIdentifier(user.getEmail()),
+            normalizeLookupIdentifier(user.getUsername())
+        ).stream()
+            .filter(value -> !value.isBlank())
+            .distinct()
+            .toList();
+
+        if (identifiers.isEmpty()) {
+            identifiers = List.of("__no_matching_identifier__");
+        }
+
+        return invitationRepository.findPendingForUser(
+                user.getId(),
+                identifiers,
+                InvitationStatus.PENDING,
+                Instant.now()
+            )
+            .stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
     @Transactional
     public WorkspaceInvitationResponse invite(UUID workspaceId, WorkspaceInvitationRequest request) {
         User actor = userContextService.getCurrentUser();
@@ -204,12 +230,17 @@ public class WorkspaceInvitationService {
 
     private WorkspaceInvitationResponse toResponse(WorkspaceInvitation invitation) {
         User invitedUser = invitation.getInvitedUser();
+        User invitedBy = invitation.getInvitedBy();
+        Workspace workspace = invitation.getWorkspace();
         return new WorkspaceInvitationResponse(
             invitation.getId(),
-            invitation.getWorkspace().getId(),
+            workspace.getId(),
+            workspace.getName(),
             invitation.getInvitedIdentifier(),
             invitedUser == null ? null : invitedUser.getId(),
-            invitation.getInvitedBy().getId(),
+            invitedBy.getId(),
+            invitedBy.getDisplayName(),
+            invitedBy.getUsername(),
             invitation.getRole(),
             invitation.getToken(),
             "/api/workspace-invitations/" + invitation.getToken() + "/accept",
@@ -229,6 +260,10 @@ public class WorkspaceInvitationService {
             token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         } while (invitationRepository.existsByToken(token));
         return token;
+    }
+
+    private String normalizeLookupIdentifier(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeIdentifier(String value) {

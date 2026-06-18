@@ -8,9 +8,12 @@ import java.util.UUID;
 public record WorkspaceInvitationResponse(
     UUID id,
     UUID workspaceId,
+    String workspaceName,
     String invitedIdentifier,
     UUID invitedUserId,
     UUID invitedByUserId,
+    String invitedByDisplayName,
+    String invitedByUsername,
     WorkspaceRole role,
     String token,
     String acceptPath,
