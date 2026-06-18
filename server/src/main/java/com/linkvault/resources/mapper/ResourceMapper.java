@@ -77,6 +77,7 @@ public class ResourceMapper {
             resource.getIsFavorite(),
             resource.getIsArchived(),
             tagsByResourceId.getOrDefault(resource.getId(), List.of()),
+            resource.getPublicAccess(),
             resource.getCreatedAt(),
             resource.getUpdatedAt()
         );

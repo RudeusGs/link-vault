@@ -5,6 +5,8 @@ import com.linkvault.users.entity.User;
 import com.linkvault.workspaces.entity.Workspace;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -54,4 +56,8 @@ public class Vault extends BaseEntity {
 
     @Column(length = 40)
     private String color;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private com.linkvault.common.enums.PublicAccess publicAccess = com.linkvault.common.enums.PublicAccess.PRIVATE;
 }

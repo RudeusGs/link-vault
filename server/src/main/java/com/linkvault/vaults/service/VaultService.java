@@ -198,6 +198,7 @@ public class VaultService {
             vault.getDescription(),
             vault.getIcon(),
             vault.getColor(),
+            vault.getPublicAccess(),
             vault.getCreatedAt(),
             vault.getUpdatedAt()
         );
@@ -211,6 +212,10 @@ public class VaultService {
         vault.setDescription(trimToNull(request.description()));
         vault.setIcon(trimToNull(request.icon()));
         vault.setColor(trimToNull(request.color()));
+        
+        if (request.publicAccess() != null) {
+            vault.setPublicAccess(request.publicAccess());
+        }
     }
 
     private void ensureNameAvailable(UUID workspaceId, String name, UUID excludedVaultId) {
@@ -235,5 +240,16 @@ public class VaultService {
             return null;
         }
         return value.trim();
+    }
+    @Transactional(readOnly = true)
+    public VaultResponse getPublicVault(UUID id) {
+        Vault vault = vaultRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException(ErrorCode.VAULT_NOT_FOUND, "Vault not found"));
+        
+        if (vault.getPublicAccess() == com.linkvault.common.enums.PublicAccess.PRIVATE) {
+            throw new com.linkvault.common.exception.UnauthorizedException("This vault is private");
+        }
+        
+        return toResponse(vault);
     }
 }

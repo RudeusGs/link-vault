@@ -59,6 +59,14 @@ public class WorkspaceController {
         return ApiResponse.success("Workspace deleted", null);
     }
 
+    @PatchMapping("/{workspaceId}/plan")
+    public ApiResponse<WorkspaceResponse> updatePlan(
+        @PathVariable UUID workspaceId,
+        @Valid @RequestBody com.linkvault.workspaces.dto.WorkspacePlanRequest request
+    ) {
+        return ApiResponse.success("Workspace plan updated", workspaceService.updatePlan(workspaceId, request));
+    }
+
     @GetMapping("/{workspaceId}/members")
     public ApiResponse<List<WorkspaceMemberResponse>> members(@PathVariable UUID workspaceId) {
         return ApiResponse.success("Workspace members loaded", workspaceService.listMembers(workspaceId));

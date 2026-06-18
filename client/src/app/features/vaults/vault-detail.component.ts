@@ -13,6 +13,7 @@ import { Vault, VaultRequest } from './models/vault.model';
 import { ResourceFormComponent } from '../resources/resource-form.component';
 import { ResourceListComponent } from '../resources/resource-list.component';
 import { VaultIconPickerComponent } from './vault-icon-picker.component';
+import { ShareDialogComponent, PublicAccessLevel } from '../../shared/components/share-dialog/share-dialog.component';
 
 interface FolderNode extends Folder {
   children: FolderNode[];
@@ -24,7 +25,7 @@ interface FolderNode extends Folder {
 @Component({
   selector: 'app-vault-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ResourceFormComponent, ResourceListComponent, VaultIconPickerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ResourceFormComponent, ResourceListComponent, VaultIconPickerComponent, ShareDialogComponent],
   template: `
     <section *ngIf="!loading && vault; else loadingTpl">
       <div class="lv-page-header mb-4">
@@ -44,6 +45,10 @@ interface FolderNode extends Folder {
         </div>
 
         <div class="lv-action-toolbar">
+          <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" (click)="openShareVault()">
+            <span class="material-symbols-outlined" style="font-size:18px">share</span>
+            Share
+          </button>
           <button class="btn btn-outline-primary d-inline-flex align-items-center gap-2" type="button" (click)="openVaultEdit()">
             <span class="material-symbols-outlined" style="font-size:18px">edit</span>
             Edit
@@ -247,6 +252,15 @@ interface FolderNode extends Folder {
         </form>
       </section>
     </div>
+
+    <app-share-dialog 
+      *ngIf="shareModalOpen && vault"
+      [title]="vault.name"
+      [currentAccess]="vault.publicAccess"
+      [publicUrlPath]="'/public/vaults/' + vault.id"
+      (close)="shareModalOpen = false"
+      (accessChanged)="updateVaultAccess($event)"
+    />
 
     <ng-template #loadingTpl>
       <div *ngIf="loading" class="lv-card p-4">
@@ -468,6 +482,33 @@ export class VaultDetailComponent implements OnInit {
     this.vaultService.delete(this.vault.id).subscribe({
       next: () => this.router.navigate(['/vaults']),
       error: (error) => (this.error = error instanceof Error ? error.message : 'Could not delete vault')
+    });
+  }
+
+  protected shareModalOpen = false;
+
+  protected openShareVault(): void {
+    this.shareModalOpen = true;
+  }
+
+  protected updateVaultAccess(access: PublicAccessLevel): void {
+    if (!this.vault) return;
+    
+    // Create a new form combining existing data and the new access level
+    const updateRequest: VaultRequest = {
+      name: this.vault.name,
+      description: this.vault.description || undefined,
+      icon: this.vault.icon || undefined,
+      color: this.vault.color || undefined,
+      publicAccess: access
+    };
+
+    this.vaultService.update(this.vault.id, updateRequest).subscribe({
+      next: () => {
+        this.shareModalOpen = false;
+        this.load();
+      },
+      error: (error) => (this.error = error instanceof Error ? error.message : 'Could not update vault access')
     });
   }
 

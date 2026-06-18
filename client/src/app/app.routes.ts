@@ -7,7 +7,7 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'dashboard'
+    loadComponent: () => import('./features/public/landing/landing.component').then((m) => m.LandingComponent)
   },
   {
     path: 'login',
@@ -58,6 +58,39 @@ export const routes: Routes = [
     path: 'tags',
     canActivate: [authGuard],
     loadComponent: () => import('./features/tags/tags.component').then((m) => m.TagsComponent)
+  },
+  {
+    path: 'settings',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/settings/settings-layout.component').then((m) => m.SettingsLayoutComponent),
+    children: [
+      { path: '', redirectTo: 'profile', pathMatch: 'full' },
+      { 
+        path: 'profile', 
+        loadComponent: () => import('./features/settings/profile-settings.component').then((m) => m.ProfileSettingsComponent) 
+      },
+      { 
+        path: 'workspaces', 
+        loadComponent: () => import('./features/settings/workspace-settings.component').then((m) => m.WorkspaceSettingsComponent) 
+      },
+      { 
+        path: 'billing', 
+        loadComponent: () => import('./features/settings/billing-settings.component').then((m) => m.BillingSettingsComponent)
+      },
+      { 
+        path: 'audit-logs', 
+        loadComponent: () => import('./features/settings/audit-logs.component').then((m) => m.AuditLogsComponent) 
+      }
+    ]
+  },
+  {
+    path: 'invitations/:token',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/workspaces/invitation-accept.component').then((m) => m.InvitationAcceptComponent)
+  },
+  {
+    path: 'public',
+    loadChildren: () => import('./features/public/public.routes').then((m) => m.PUBLIC_ROUTES)
   },
   {
     path: '**',

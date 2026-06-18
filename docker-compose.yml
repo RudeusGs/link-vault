@@ -40,6 +40,7 @@ services:
       context: ./server
     container_name: linkvault-server
     restart: unless-stopped
+    command: ["java", "-jar", "app.jar", "--debug"]
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-link_vault_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-linkvault}
@@ -87,4 +88,3 @@ volumes:
 networks:
   linkvault-network:
     driver: bridge
-

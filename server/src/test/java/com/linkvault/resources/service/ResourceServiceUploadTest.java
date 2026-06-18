@@ -1,13 +1,10 @@
 package com.linkvault.resources.service;
 
-import com.linkvault.resources.dto.ResourceRequest;
 import com.linkvault.resources.entity.Resource;
-import com.linkvault.resources.enums.ResourceType;
 import com.linkvault.resources.mapper.ResourceMapper;
 import com.linkvault.resources.repository.ResourceRepository;
 import com.linkvault.storage.dto.StorageResult;
 import com.linkvault.storage.service.StorageService;
-import com.linkvault.users.entity.User;
 import com.linkvault.users.service.UserContextService;
 import com.linkvault.vaults.entity.Vault;
 import com.linkvault.workspaces.entity.Workspace;
@@ -21,7 +18,6 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 

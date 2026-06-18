@@ -38,4 +38,13 @@ public class UserContextService {
 
         throw new UnauthorizedException("Login required");
     }
+
+    @Transactional(readOnly = true)
+    public User getCurrentUserOrNull() {
+        try {
+            return getCurrentUser();
+        } catch (UnauthorizedException e) {
+            return null;
+        }
+    }
 }

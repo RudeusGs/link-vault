@@ -13,6 +13,7 @@ public record ResourceRequest(
     String content,
     @Size(max = 80) String codeLanguage,
     @Size(max = 255) String sourceName,
-    @Size(max = 2000) String thumbnailUrl
+    @Size(max = 2000) String thumbnailUrl,
+    com.linkvault.common.enums.PublicAccess publicAccess
 ) {
 }

@@ -19,7 +19,6 @@ import com.linkvault.workspaces.enums.WorkspaceRole;
 import com.linkvault.workspaces.repository.WorkspaceMemberRepository;
 import com.linkvault.workspaces.repository.WorkspaceRepository;
 import java.text.Normalizer;
-import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -122,6 +121,17 @@ public class WorkspaceService {
         workspace.setName(normalizeName(request.name()));
         workspaceRepository.save(workspace);
         auditLogService.record(workspace, user, "workspace.updated", "WORKSPACE", workspace.getId());
+        return toResponse(member);
+    }
+
+    @Transactional
+    public WorkspaceResponse updatePlan(UUID workspaceId, com.linkvault.workspaces.dto.WorkspacePlanRequest request) {
+        User user = userContextService.getCurrentUser();
+        WorkspaceMember member = permissionService.requireOwner(workspaceId, user);
+        Workspace workspace = member.getWorkspace();
+        workspace.setPlan(request.plan());
+        workspaceRepository.save(workspace);
+        auditLogService.record(workspace, user, "workspace.plan_updated", "WORKSPACE", workspace.getId(), "{\"plan\":\"" + request.plan().name() + "\"}");
         return toResponse(member);
     }
 

@@ -9,6 +9,7 @@ public record VaultResponse(
     String description,
     String icon,
     String color,
+    com.linkvault.common.enums.PublicAccess publicAccess,
     Instant createdAt,
     Instant updatedAt
 ) {

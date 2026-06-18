@@ -567,6 +567,11 @@ public class ResourceService {
         resource.setCodeLanguage(request.resourceType() == ResourceType.SNIPPET ? trimToNull(request.codeLanguage()) : null);
         resource.setSourceName(request.resourceType() == ResourceType.LINK ? trimToNull(request.sourceName()) : null);
         resource.setThumbnailUrl(request.resourceType() == ResourceType.LINK ? trimToNull(request.thumbnailUrl()) : null);
+        
+        if (request.publicAccess() != null) {
+            resource.setPublicAccess(request.publicAccess());
+        }
+
         if (request.resourceType() != ResourceType.LINK) {
             clearLinkPreviewFields(resource);
         }
