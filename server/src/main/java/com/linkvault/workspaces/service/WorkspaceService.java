@@ -5,6 +5,7 @@ import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.ForbiddenException;
 import com.linkvault.common.exception.NotFoundException;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
 import com.linkvault.users.entity.User;
 import com.linkvault.users.service.UserContextService;
 import com.linkvault.workspaces.dto.WorkspaceMemberResponse;
@@ -38,6 +39,7 @@ public class WorkspaceService {
     private final PermissionService permissionService;
     private final QuotaService quotaService;
     private final AuditLogService auditLogService;
+    private final RedisCacheInvalidationService cacheInvalidationService;
 
     public WorkspaceService(
         WorkspaceRepository workspaceRepository,
@@ -45,7 +47,8 @@ public class WorkspaceService {
         UserContextService userContextService,
         PermissionService permissionService,
         QuotaService quotaService,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        RedisCacheInvalidationService cacheInvalidationService
     ) {
         this.workspaceRepository = workspaceRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
@@ -53,6 +56,7 @@ public class WorkspaceService {
         this.permissionService = permissionService;
         this.quotaService = quotaService;
         this.auditLogService = auditLogService;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     @Transactional
@@ -75,6 +79,7 @@ public class WorkspaceService {
         workspaceMemberRepository.save(ownerMembership);
 
         auditLogService.record(savedWorkspace, user, "workspace.created", "WORKSPACE", savedWorkspace.getId());
+        cacheInvalidationService.invalidateWorkspace(savedWorkspace.getId());
         return savedWorkspace;
     }
 
@@ -110,6 +115,7 @@ public class WorkspaceService {
         workspaceMemberRepository.save(member);
 
         auditLogService.record(workspace, user, "workspace.created", "WORKSPACE", workspace.getId());
+        cacheInvalidationService.invalidateWorkspace(workspace.getId());
         return toResponse(member);
     }
 
@@ -121,6 +127,7 @@ public class WorkspaceService {
         workspace.setName(normalizeName(request.name()));
         workspaceRepository.save(workspace);
         auditLogService.record(workspace, user, "workspace.updated", "WORKSPACE", workspace.getId());
+        cacheInvalidationService.invalidateWorkspace(workspace.getId());
         return toResponse(member);
     }
 
@@ -132,6 +139,7 @@ public class WorkspaceService {
         workspace.setPlan(request.plan());
         workspaceRepository.save(workspace);
         auditLogService.record(workspace, user, "workspace.plan_updated", "WORKSPACE", workspace.getId(), "{\"plan\":\"" + request.plan().name() + "\"}");
+        cacheInvalidationService.invalidateWorkspace(workspace.getId());
         return toResponse(member);
     }
 
@@ -148,6 +156,7 @@ public class WorkspaceService {
 
         workspaceRepository.delete(workspace);
         auditLogService.record(workspace, user, "workspace.deleted", "WORKSPACE", workspace.getId());
+        cacheInvalidationService.invalidateWorkspace(workspace.getId());
     }
 
     @Transactional(readOnly = true)
@@ -213,6 +222,7 @@ public class WorkspaceService {
             target.getId(),
             "{\"role\":\"" + newRole.name() + "\"}"
         );
+        cacheInvalidationService.invalidateWorkspace(workspaceId);
         return toMemberResponse(target);
     }
 
@@ -227,6 +237,7 @@ public class WorkspaceService {
 
         workspaceMemberRepository.delete(target);
         auditLogService.record(target.getWorkspace(), actor, "member.removed", "WORKSPACE_MEMBER", target.getId());
+        cacheInvalidationService.invalidateWorkspace(workspaceId);
     }
 
     @Transactional(readOnly = true)
@@ -366,3 +377,4 @@ public class WorkspaceService {
         return "";
     }
 }
+

@@ -4,6 +4,10 @@ import com.linkvault.audit.service.AuditLogService;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.NotFoundException;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisKeys;
+import com.linkvault.common.redis.RedisProperties;
 import com.linkvault.folders.entity.Folder;
 import com.linkvault.folders.repository.FolderRepository;
 import com.linkvault.resources.entity.Resource;
@@ -34,6 +38,9 @@ public class VaultService {
     private final WorkspaceService workspaceService;
     private final QuotaService quotaService;
     private final AuditLogService auditLogService;
+    private final RedisCacheService redisCacheService;
+    private final RedisProperties redisProperties;
+    private final RedisCacheInvalidationService cacheInvalidationService;
 
     public VaultService(
         VaultRepository vaultRepository,
@@ -43,7 +50,10 @@ public class VaultService {
         UserContextService userContextService,
         WorkspaceService workspaceService,
         QuotaService quotaService,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        RedisCacheService redisCacheService,
+        RedisProperties redisProperties,
+        RedisCacheInvalidationService cacheInvalidationService
     ) {
         this.vaultRepository = vaultRepository;
         this.folderRepository = folderRepository;
@@ -53,6 +63,9 @@ public class VaultService {
         this.workspaceService = workspaceService;
         this.quotaService = quotaService;
         this.auditLogService = auditLogService;
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     @Transactional(readOnly = true)
@@ -64,9 +77,14 @@ public class VaultService {
     @Transactional(readOnly = true)
     public List<VaultResponse> listVaults(UUID workspaceId) {
         workspaceService.requireMember(workspaceId);
-        return vaultRepository.findByWorkspace_IdOrderByCreatedAtDesc(workspaceId).stream()
-            .map(this::toResponse)
-            .toList();
+        return redisCacheService.getListOrLoad(
+            RedisKeys.workspaceVaultList(workspaceId),
+            redisProperties.getCache().getVaultListTtl(),
+            VaultResponse.class,
+            () -> vaultRepository.findByWorkspace_IdOrderByCreatedAtDesc(workspaceId).stream()
+                .map(this::toResponse)
+                .toList()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -98,6 +116,7 @@ public class VaultService {
 
         Vault savedVault = vaultRepository.save(vault);
         auditLogService.record(workspace, user, "vault.created", "VAULT", savedVault.getId());
+        invalidateVaultCaches(savedVault);
         return toResponse(savedVault);
     }
 
@@ -113,6 +132,7 @@ public class VaultService {
             "VAULT",
             savedVault.getId()
         );
+        invalidateVaultCaches(savedVault);
         return toResponse(savedVault);
     }
 
@@ -128,6 +148,7 @@ public class VaultService {
             "VAULT",
             savedVault.getId()
         );
+        invalidateVaultCaches(savedVault);
         return toResponse(savedVault);
     }
 
@@ -158,6 +179,10 @@ public class VaultService {
 
         vaultRepository.delete(vault);
         auditLogService.record(workspace, user, "vault.deleted", "VAULT", id);
+        cacheInvalidationService.invalidateWorkspace(workspace.getId());
+        cacheInvalidationService.invalidateVault(id);
+        resources.forEach(resource -> cacheInvalidationService.invalidateResource(resource.getId()));
+        folders.forEach(folder -> cacheInvalidationService.invalidateFolder(folder.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -202,6 +227,12 @@ public class VaultService {
             vault.getCreatedAt(),
             vault.getUpdatedAt()
         );
+    }
+
+
+    private void invalidateVaultCaches(Vault vault) {
+        cacheInvalidationService.invalidateWorkspace(vault.getWorkspace().getId());
+        cacheInvalidationService.invalidateVault(vault.getId());
     }
 
     private void applyRequest(Vault vault, VaultRequest request) {
@@ -253,3 +284,4 @@ public class VaultService {
         return toResponse(vault);
     }
 }
+

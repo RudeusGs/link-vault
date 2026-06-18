@@ -1,6 +1,9 @@
 package com.linkvault.tags.service;
 
 import com.linkvault.audit.service.AuditLogService;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisProperties;
 import com.linkvault.resources.repository.ResourceTagRepository;
 import com.linkvault.tags.dto.TagRequest;
 import com.linkvault.tags.dto.TagResponse;
@@ -26,12 +29,18 @@ class TagServiceTest {
     private final UserContextService userContextService = mock(UserContextService.class);
     private final WorkspaceService workspaceService = mock(WorkspaceService.class);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
+    private final RedisCacheService redisCacheService = mock(RedisCacheService.class);
+    private final RedisProperties redisProperties = new RedisProperties();
+    private final RedisCacheInvalidationService cacheInvalidationService = mock(RedisCacheInvalidationService.class);
     private final TagService tagService = new TagService(
         tagRepository,
         resourceTagRepository,
         userContextService,
         workspaceService,
-        auditLogService
+        auditLogService,
+        redisCacheService,
+        redisProperties,
+        cacheInvalidationService
     );
 
     @Test
@@ -71,3 +80,4 @@ class TagServiceTest {
         return workspace;
     }
 }
+

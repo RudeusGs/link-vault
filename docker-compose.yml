@@ -20,6 +20,23 @@ services:
     networks:
       - linkvault-network
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: linkvault-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-linkvaultredis123}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - linkvault_redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-linkvaultredis123} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    networks:
+      - linkvault-network
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: linkvault-pgadmin
@@ -49,6 +66,15 @@ services:
       SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-true}
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:-true}
 
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-linkvaultredis123}
+      SPRING_DATA_REDIS_DATABASE: ${REDIS_DATABASE:-0}
+      SPRING_DATA_REDIS_TIMEOUT: ${REDIS_TIMEOUT:-2s}
+      APP_REDIS_ENABLED: ${APP_REDIS_ENABLED:-true}
+      APP_REDIS_KEY_PREFIX: ${APP_REDIS_KEY_PREFIX:-linkvault}
+      APP_REDIS_RATE_LIMIT_ENABLED: ${APP_REDIS_RATE_LIMIT_ENABLED:-true}
+
       APP_JWT_ISSUER: ${APP_JWT_ISSUER:-link-vault-api}
       APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be set in .env}
       APP_JWT_EXPIRATION_MINUTES: ${APP_JWT_EXPIRATION_MINUTES:-120}
@@ -67,6 +93,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - linkvault-network
 
@@ -84,7 +112,10 @@ services:
 
 volumes:
   linkvault_pgdata:
+  linkvault_redisdata:
 
 networks:
   linkvault-network:
     driver: bridge
+
+

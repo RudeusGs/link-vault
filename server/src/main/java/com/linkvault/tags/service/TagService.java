@@ -4,6 +4,10 @@ import com.linkvault.audit.service.AuditLogService;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.NotFoundException;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisKeys;
+import com.linkvault.common.redis.RedisProperties;
 import com.linkvault.resources.repository.ResourceTagRepository;
 import com.linkvault.tags.dto.TagRequest;
 import com.linkvault.tags.dto.TagResponse;
@@ -29,19 +33,28 @@ public class TagService {
     private final UserContextService userContextService;
     private final WorkspaceService workspaceService;
     private final AuditLogService auditLogService;
+    private final RedisCacheService redisCacheService;
+    private final RedisProperties redisProperties;
+    private final RedisCacheInvalidationService cacheInvalidationService;
 
     public TagService(
         TagRepository tagRepository,
         ResourceTagRepository resourceTagRepository,
         UserContextService userContextService,
         WorkspaceService workspaceService,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        RedisCacheService redisCacheService,
+        RedisProperties redisProperties,
+        RedisCacheInvalidationService cacheInvalidationService
     ) {
         this.tagRepository = tagRepository;
         this.resourceTagRepository = resourceTagRepository;
         this.userContextService = userContextService;
         this.workspaceService = workspaceService;
         this.auditLogService = auditLogService;
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +66,12 @@ public class TagService {
     @Transactional(readOnly = true)
     public List<TagResponse> listTags(UUID workspaceId) {
         workspaceService.requireMember(workspaceId);
-        return toResponses(tagRepository.findByWorkspace_IdOrderByNameAsc(workspaceId));
+        return redisCacheService.getListOrLoad(
+            RedisKeys.workspaceTags(workspaceId),
+            redisProperties.getCache().getTagListTtl(),
+            TagResponse.class,
+            () -> toResponses(tagRepository.findByWorkspace_IdOrderByNameAsc(workspaceId))
+        );
     }
 
     @Transactional
@@ -76,6 +94,7 @@ public class TagService {
 
         Tag savedTag = tagRepository.save(tag);
         auditLogService.record(workspace, user, "tag.created", "TAG", savedTag.getId());
+        invalidateTagCaches(savedTag.getWorkspace().getId());
         return toResponse(savedTag);
     }
 
@@ -87,6 +106,7 @@ public class TagService {
         applyRequest(tag, request);
         Tag savedTag = tagRepository.save(tag);
         auditLogService.record(savedTag.getWorkspace(), userContextService.getCurrentUser(), "tag.updated", "TAG", savedTag.getId());
+        invalidateTagCaches(savedTag.getWorkspace().getId());
         return toResponse(savedTag);
     }
 
@@ -98,6 +118,7 @@ public class TagService {
         applyRequest(tag, request);
         Tag savedTag = tagRepository.save(tag);
         auditLogService.record(savedTag.getWorkspace(), userContextService.getCurrentUser(), "tag.updated", "TAG", savedTag.getId());
+        invalidateTagCaches(savedTag.getWorkspace().getId());
         return toResponse(savedTag);
     }
 
@@ -107,6 +128,7 @@ public class TagService {
         resourceTagRepository.deleteByTag_Id(id);
         tagRepository.delete(tag);
         auditLogService.record(tag.getWorkspace(), userContextService.getCurrentUser(), "tag.deleted", "TAG", id);
+        invalidateTagCaches(tag.getWorkspace().getId());
     }
 
     @Transactional
@@ -115,6 +137,7 @@ public class TagService {
         resourceTagRepository.deleteByTag_Id(id);
         tagRepository.delete(tag);
         auditLogService.record(tag.getWorkspace(), userContextService.getCurrentUser(), "tag.deleted", "TAG", id);
+        invalidateTagCaches(tag.getWorkspace().getId());
     }
 
     @Transactional(readOnly = true)
@@ -174,6 +197,11 @@ public class TagService {
             .toList();
     }
 
+
+    public void invalidateTagCaches(UUID workspaceId) {
+        cacheInvalidationService.invalidateWorkspace(workspaceId);
+    }
+
     private Map<UUID, Long> usageByTagId(List<Tag> tags) {
         List<UUID> tagIds = tags.stream()
             .map(Tag::getId)
@@ -219,3 +247,4 @@ public class TagService {
         return value.trim();
     }
 }
+

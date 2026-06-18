@@ -6,6 +6,7 @@ import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.common.exception.UnauthorizedException;
 import com.linkvault.common.response.ApiResponse;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
 import com.linkvault.resources.dto.ResourceRequest;
 import com.linkvault.resources.dto.ResourceResponse;
 import com.linkvault.resources.entity.Resource;
@@ -26,17 +27,20 @@ public class PublicResourceController {
     private final ResourceService resourceService;
     private final ResourceMapper resourceMapper;
     private final VaultRepository vaultRepository;
+    private final RedisCacheInvalidationService cacheInvalidationService;
 
     public PublicResourceController(
         ResourceRepository resourceRepository,
         ResourceService resourceService,
         ResourceMapper resourceMapper,
-        VaultRepository vaultRepository
+        VaultRepository vaultRepository,
+        RedisCacheInvalidationService cacheInvalidationService
     ) {
         this.resourceRepository = resourceRepository;
         this.resourceService = resourceService;
         this.resourceMapper = resourceMapper;
         this.vaultRepository = vaultRepository;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     private Resource requirePublicResource(UUID id, boolean requireEdit) {
@@ -98,6 +102,14 @@ public class PublicResourceController {
         resource.setThumbnailUrl(request.thumbnailUrl() != null ? request.thumbnailUrl().trim() : null);
         
         Resource savedResource = resourceRepository.save(resource);
+        cacheInvalidationService.invalidateWorkspace(savedResource.getVault().getWorkspace().getId());
+        cacheInvalidationService.invalidateVault(savedResource.getVault().getId());
+        cacheInvalidationService.invalidateResource(savedResource.getId());
+        if (savedResource.getFolder() != null) {
+            cacheInvalidationService.invalidateFolder(savedResource.getFolder().getId());
+        }
         return ApiResponse.success("Resource updated", resourceMapper.toResponse(savedResource));
     }
 }
+
+

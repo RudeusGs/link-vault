@@ -4,6 +4,10 @@ import com.linkvault.audit.service.AuditLogService;
 import com.linkvault.common.exception.BadRequestException;
 import com.linkvault.common.exception.ErrorCode;
 import com.linkvault.common.exception.NotFoundException;
+import com.linkvault.common.redis.RedisCacheInvalidationService;
+import com.linkvault.common.redis.RedisCacheService;
+import com.linkvault.common.redis.RedisKeys;
+import com.linkvault.common.redis.RedisProperties;
 import com.linkvault.folders.dto.FolderRequest;
 import com.linkvault.folders.dto.FolderResponse;
 import com.linkvault.folders.entity.Folder;
@@ -31,6 +35,9 @@ public class FolderService {
     private final WorkspaceService workspaceService;
     private final UserContextService userContextService;
     private final AuditLogService auditLogService;
+    private final RedisCacheService redisCacheService;
+    private final RedisProperties redisProperties;
+    private final RedisCacheInvalidationService cacheInvalidationService;
 
     public FolderService(
         FolderRepository folderRepository,
@@ -39,7 +46,10 @@ public class FolderService {
         VaultService vaultService,
         WorkspaceService workspaceService,
         UserContextService userContextService,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        RedisCacheService redisCacheService,
+        RedisProperties redisProperties,
+        RedisCacheInvalidationService cacheInvalidationService
     ) {
         this.folderRepository = folderRepository;
         this.resourceRepository = resourceRepository;
@@ -48,38 +58,33 @@ public class FolderService {
         this.workspaceService = workspaceService;
         this.userContextService = userContextService;
         this.auditLogService = auditLogService;
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     @Transactional(readOnly = true)
     public List<FolderResponse> listByVault(UUID vaultId) {
         vaultService.getVault(vaultId);
-        return folderRepository.findByVault_IdOrderBySortOrderAscNameAsc(vaultId).stream()
-            .map(this::toResponse)
-            .toList();
+        return cachedFoldersByVault(vaultId);
     }
 
     @Transactional(readOnly = true)
     public List<FolderResponse> listByVault(UUID workspaceId, UUID vaultId) {
         vaultService.getVault(workspaceId, vaultId);
-        return folderRepository.findByVault_IdOrderBySortOrderAscNameAsc(vaultId).stream()
-            .map(this::toResponse)
-            .toList();
+        return cachedFoldersByVault(vaultId);
     }
 
     @Transactional(readOnly = true)
     public List<FolderResponse> listChildren(UUID parentId) {
         Folder parent = getFolder(parentId);
-        return folderRepository.findByParent_IdOrderBySortOrderAscNameAsc(parent.getId()).stream()
-            .map(this::toResponse)
-            .toList();
+        return cachedChildren(parent.getId());
     }
 
     @Transactional(readOnly = true)
     public List<FolderResponse> listChildren(UUID workspaceId, UUID parentId) {
         Folder parent = getFolder(workspaceId, parentId);
-        return folderRepository.findByParent_IdOrderBySortOrderAscNameAsc(parent.getId()).stream()
-            .map(this::toResponse)
-            .toList();
+        return cachedChildren(parent.getId());
     }
 
     @Transactional(readOnly = true)
@@ -100,6 +105,7 @@ public class FolderService {
         applyRequest(folder, request, vault, null);
         Folder savedFolder = folderRepository.save(folder);
         auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
 
@@ -111,6 +117,7 @@ public class FolderService {
         applyRequest(folder, request, vault, null);
         Folder savedFolder = folderRepository.save(folder);
         auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
 
@@ -122,6 +129,7 @@ public class FolderService {
         applyRequest(folder, request, parent.getVault(), parent);
         Folder savedFolder = folderRepository.save(folder);
         auditLogService.record(parent.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
 
@@ -133,6 +141,7 @@ public class FolderService {
         applyRequest(folder, request, parent.getVault(), parent);
         Folder savedFolder = folderRepository.save(folder);
         auditLogService.record(parent.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
 
@@ -143,6 +152,7 @@ public class FolderService {
         applyRequest(folder, request, folder.getVault(), folder.getParent());
         Folder savedFolder = folderRepository.save(folder);
         auditLogService.record(savedFolder.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.updated", "FOLDER", savedFolder.getId());
+        invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
 
@@ -153,6 +163,7 @@ public class FolderService {
         applyRequest(folder, request, folder.getVault(), folder.getParent());
         Folder savedFolder = folderRepository.save(folder);
         auditLogService.record(savedFolder.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.updated", "FOLDER", savedFolder.getId());
+        invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
 
@@ -200,6 +211,28 @@ public class FolderService {
         workspaceService.requireCanWrite(workspaceId);
         return folderRepository.findByIdAndVault_Workspace_Id(id, workspaceId)
             .orElseThrow(() -> new NotFoundException(ErrorCode.FOLDER_NOT_FOUND, "Folder not found"));
+    }
+
+    private List<FolderResponse> cachedFoldersByVault(UUID vaultId) {
+        return redisCacheService.getListOrLoad(
+            RedisKeys.vaultFolders(vaultId),
+            redisProperties.getCache().getFolderTreeTtl(),
+            FolderResponse.class,
+            () -> folderRepository.findByVault_IdOrderBySortOrderAscNameAsc(vaultId).stream()
+                .map(this::toResponse)
+                .toList()
+        );
+    }
+
+    private List<FolderResponse> cachedChildren(UUID parentId) {
+        return redisCacheService.getListOrLoad(
+            RedisKeys.folderChildren(parentId),
+            redisProperties.getCache().getFolderTreeTtl(),
+            FolderResponse.class,
+            () -> folderRepository.findByParent_IdOrderBySortOrderAscNameAsc(parentId).stream()
+                .map(this::toResponse)
+                .toList()
+        );
     }
 
     public FolderResponse toResponse(Folder folder) {
@@ -253,6 +286,17 @@ public class FolderService {
         List<Resource> resources = resourceRepository.findByFolder_IdOrderByCreatedAtDesc(folder.getId());
         resourceCleanupService.deleteAll(resources);
         folderRepository.delete(folder);
+        resources.forEach(resource -> cacheInvalidationService.invalidateResource(resource.getId()));
+        invalidateFolderCaches(folder);
+    }
+
+    private void invalidateFolderCaches(Folder folder) {
+        cacheInvalidationService.invalidateWorkspace(folder.getVault().getWorkspace().getId());
+        cacheInvalidationService.invalidateVault(folder.getVault().getId());
+        cacheInvalidationService.invalidateFolder(folder.getId());
+        if (folder.getParent() != null) {
+            cacheInvalidationService.invalidateFolder(folder.getParent().getId());
+        }
     }
 
     private String normalizeName(String value) {
@@ -269,3 +313,4 @@ public class FolderService {
         return value.trim();
     }
 }
+
