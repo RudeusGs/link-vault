@@ -60,7 +60,7 @@ class WorkspaceServiceTest {
         assertThat(workspace.getSlug()).isEqualTo("ada");
         assertThat(workspace.getOwner()).isSameAs(user);
         verify(workspaceMemberRepository).save(any(WorkspaceMember.class));
-        verify(auditLogService).record(workspace, user, "workspace.created", "WORKSPACE", workspace.getId());
+        verify(auditLogService).recordAsync(workspace, user, "workspace.created", "WORKSPACE", workspace.getId());
     }
 
     @Test

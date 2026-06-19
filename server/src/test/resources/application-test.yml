@@ -23,3 +23,5 @@ app:
     enabled: false
     rate-limit:
       enabled: false
+  rabbitmq:
+    enabled: false

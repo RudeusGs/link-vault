@@ -115,7 +115,7 @@ public class VaultService {
         applyRequest(vault, request);
 
         Vault savedVault = vaultRepository.save(vault);
-        auditLogService.record(workspace, user, "vault.created", "VAULT", savedVault.getId());
+        auditLogService.recordAsync(workspace, user, "vault.created", "VAULT", savedVault.getId());
         invalidateVaultCaches(savedVault);
         return toResponse(savedVault);
     }
@@ -125,7 +125,7 @@ public class VaultService {
         Vault vault = getVaultForWrite(id);
         applyRequest(vault, request);
         Vault savedVault = vaultRepository.save(vault);
-        auditLogService.record(
+        auditLogService.recordAsync(
             savedVault.getWorkspace(),
             userContextService.getCurrentUser(),
             "vault.updated",
@@ -141,7 +141,7 @@ public class VaultService {
         Vault vault = getVaultForWrite(workspaceId, id);
         applyRequest(vault, request);
         Vault savedVault = vaultRepository.save(vault);
-        auditLogService.record(
+        auditLogService.recordAsync(
             savedVault.getWorkspace(),
             userContextService.getCurrentUser(),
             "vault.updated",
@@ -178,7 +178,7 @@ public class VaultService {
         folderRepository.deleteAll(folders);
 
         vaultRepository.delete(vault);
-        auditLogService.record(workspace, user, "vault.deleted", "VAULT", id);
+        auditLogService.recordAsync(workspace, user, "vault.deleted", "VAULT", id);
         cacheInvalidationService.invalidateWorkspace(workspace.getId());
         cacheInvalidationService.invalidateVault(id);
         resources.forEach(resource -> cacheInvalidationService.invalidateResource(resource.getId()));

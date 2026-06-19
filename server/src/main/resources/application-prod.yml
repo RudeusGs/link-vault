@@ -17,5 +17,7 @@ app:
     secret: ${APP_JWT_SECRET}
   redis:
     enabled: ${APP_REDIS_ENABLED:true}
+  rabbitmq:
+    enabled: ${APP_RABBITMQ_ENABLED:true}
 
 

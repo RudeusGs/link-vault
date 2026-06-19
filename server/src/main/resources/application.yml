@@ -25,6 +25,20 @@ spring:
       password: ${SPRING_DATA_REDIS_PASSWORD:}
       database: ${SPRING_DATA_REDIS_DATABASE:0}
       timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:linkvault}
+    password: ${SPRING_RABBITMQ_PASSWORD:linkvaultrabbit123}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: ${APP_RABBITMQ_RETRY_MAX_ATTEMPTS:3}
+          initial-interval: ${APP_RABBITMQ_RETRY_INITIAL_INTERVAL:1000}ms
+          multiplier: ${APP_RABBITMQ_RETRY_MULTIPLIER:2.0}
+          max-interval: ${APP_RABBITMQ_RETRY_MAX_INTERVAL:10000}ms
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
     baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
@@ -65,6 +79,22 @@ app:
       upload-window: ${APP_REDIS_RATE_LIMIT_UPLOAD_WINDOW:1m}
       preview-capacity: ${APP_REDIS_RATE_LIMIT_PREVIEW_CAPACITY:50}
       preview-window: ${APP_REDIS_RATE_LIMIT_PREVIEW_WINDOW:1m}
+  rabbitmq:
+    enabled: ${APP_RABBITMQ_ENABLED:true}
+    exchange: ${APP_RABBITMQ_EXCHANGE:linkvault.events.exchange}
+    audit-queue: ${APP_RABBITMQ_AUDIT_QUEUE:linkvault.audit.queue}
+    preview-queue: ${APP_RABBITMQ_PREVIEW_QUEUE:linkvault.preview.queue}
+    notification-queue: ${APP_RABBITMQ_NOTIFICATION_QUEUE:linkvault.notification.queue}
+    cleanup-queue: ${APP_RABBITMQ_CLEANUP_QUEUE:linkvault.cleanup.queue}
+    audit-routing-key: ${APP_RABBITMQ_AUDIT_ROUTING_KEY:linkvault.audit.record}
+    preview-routing-key: ${APP_RABBITMQ_PREVIEW_ROUTING_KEY:linkvault.resource.preview.requested}
+    notification-routing-key: ${APP_RABBITMQ_NOTIFICATION_ROUTING_KEY:linkvault.notification.requested}
+    cleanup-routing-key: ${APP_RABBITMQ_CLEANUP_ROUTING_KEY:linkvault.cleanup.requested}
+    retry:
+      max-attempts: ${APP_RABBITMQ_RETRY_MAX_ATTEMPTS:3}
+      initial-interval: ${APP_RABBITMQ_RETRY_INITIAL_INTERVAL:1000}
+      multiplier: ${APP_RABBITMQ_RETRY_MULTIPLIER:2.0}
+      max-interval: ${APP_RABBITMQ_RETRY_MAX_INTERVAL:10000}
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}
