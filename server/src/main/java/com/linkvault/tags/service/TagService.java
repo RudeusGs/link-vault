@@ -93,7 +93,7 @@ public class TagService {
         applyRequest(tag, request);
 
         Tag savedTag = tagRepository.save(tag);
-        auditLogService.record(workspace, user, "tag.created", "TAG", savedTag.getId());
+        auditLogService.recordAsync(workspace, user, "tag.created", "TAG", savedTag.getId());
         invalidateTagCaches(savedTag.getWorkspace().getId());
         return toResponse(savedTag);
     }
@@ -105,7 +105,7 @@ public class TagService {
         ensureNameAvailable(tag.getWorkspace().getId(), name, tag.getName());
         applyRequest(tag, request);
         Tag savedTag = tagRepository.save(tag);
-        auditLogService.record(savedTag.getWorkspace(), userContextService.getCurrentUser(), "tag.updated", "TAG", savedTag.getId());
+        auditLogService.recordAsync(savedTag.getWorkspace(), userContextService.getCurrentUser(), "tag.updated", "TAG", savedTag.getId());
         invalidateTagCaches(savedTag.getWorkspace().getId());
         return toResponse(savedTag);
     }
@@ -117,7 +117,7 @@ public class TagService {
         ensureNameAvailable(tag.getWorkspace().getId(), name, tag.getName());
         applyRequest(tag, request);
         Tag savedTag = tagRepository.save(tag);
-        auditLogService.record(savedTag.getWorkspace(), userContextService.getCurrentUser(), "tag.updated", "TAG", savedTag.getId());
+        auditLogService.recordAsync(savedTag.getWorkspace(), userContextService.getCurrentUser(), "tag.updated", "TAG", savedTag.getId());
         invalidateTagCaches(savedTag.getWorkspace().getId());
         return toResponse(savedTag);
     }
@@ -127,7 +127,7 @@ public class TagService {
         Tag tag = getTagForWrite(id);
         resourceTagRepository.deleteByTag_Id(id);
         tagRepository.delete(tag);
-        auditLogService.record(tag.getWorkspace(), userContextService.getCurrentUser(), "tag.deleted", "TAG", id);
+        auditLogService.recordAsync(tag.getWorkspace(), userContextService.getCurrentUser(), "tag.deleted", "TAG", id);
         invalidateTagCaches(tag.getWorkspace().getId());
     }
 
@@ -136,7 +136,7 @@ public class TagService {
         Tag tag = getTagForWrite(workspaceId, id);
         resourceTagRepository.deleteByTag_Id(id);
         tagRepository.delete(tag);
-        auditLogService.record(tag.getWorkspace(), userContextService.getCurrentUser(), "tag.deleted", "TAG", id);
+        auditLogService.recordAsync(tag.getWorkspace(), userContextService.getCurrentUser(), "tag.deleted", "TAG", id);
         invalidateTagCaches(tag.getWorkspace().getId());
     }
 

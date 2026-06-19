@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-linkvault}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linkvault123}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - linkvault_pgdata:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-linkvaultredis123}"]
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - linkvault_redisdata:/data
     healthcheck:
@@ -81,6 +81,22 @@ services:
       APP_SEED_DEMO_DATA: ${APP_SEED_DEMO_DATA:-false}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
 
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-linkvault}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+      SPRING_RABBITMQ_VIRTUAL_HOST: ${RABBITMQ_DEFAULT_VHOST:-/}
+      APP_RABBITMQ_ENABLED: ${APP_RABBITMQ_ENABLED:-true}
+      APP_RABBITMQ_EXCHANGE: ${APP_RABBITMQ_EXCHANGE:-linkvault.events.exchange}
+      APP_RABBITMQ_AUDIT_QUEUE: ${APP_RABBITMQ_AUDIT_QUEUE:-linkvault.audit.queue}
+      APP_RABBITMQ_PREVIEW_QUEUE: ${APP_RABBITMQ_PREVIEW_QUEUE:-linkvault.preview.queue}
+      APP_RABBITMQ_NOTIFICATION_QUEUE: ${APP_RABBITMQ_NOTIFICATION_QUEUE:-linkvault.notification.queue}
+      APP_RABBITMQ_CLEANUP_QUEUE: ${APP_RABBITMQ_CLEANUP_QUEUE:-linkvault.cleanup.queue}
+      APP_RABBITMQ_AUDIT_ROUTING_KEY: ${APP_RABBITMQ_AUDIT_ROUTING_KEY:-linkvault.audit.record}
+      APP_RABBITMQ_PREVIEW_ROUTING_KEY: ${APP_RABBITMQ_PREVIEW_ROUTING_KEY:-linkvault.resource.preview.requested}
+      APP_RABBITMQ_NOTIFICATION_ROUTING_KEY: ${APP_RABBITMQ_NOTIFICATION_ROUTING_KEY:-linkvault.notification.requested}
+      APP_RABBITMQ_CLEANUP_ROUTING_KEY: ${APP_RABBITMQ_CLEANUP_ROUTING_KEY:-linkvault.cleanup.requested}
+
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
@@ -94,6 +110,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - linkvault-network
@@ -110,9 +128,31 @@ services:
     networks:
       - linkvault-network
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: linkvault-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-linkvault}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-/}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - linkvault_rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    networks:
+      - linkvault-network
+
 volumes:
   linkvault_pgdata:
   linkvault_redisdata:
+  linkvault_rabbitmqdata:
 
 networks:
   linkvault-network:

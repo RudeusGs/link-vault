@@ -78,7 +78,7 @@ public class WorkspaceService {
         ownerMembership.setRole(WorkspaceRole.OWNER);
         workspaceMemberRepository.save(ownerMembership);
 
-        auditLogService.record(savedWorkspace, user, "workspace.created", "WORKSPACE", savedWorkspace.getId());
+        auditLogService.recordAsync(savedWorkspace, user, "workspace.created", "WORKSPACE", savedWorkspace.getId());
         cacheInvalidationService.invalidateWorkspace(savedWorkspace.getId());
         return savedWorkspace;
     }
@@ -114,7 +114,7 @@ public class WorkspaceService {
         member.setRole(WorkspaceRole.OWNER);
         workspaceMemberRepository.save(member);
 
-        auditLogService.record(workspace, user, "workspace.created", "WORKSPACE", workspace.getId());
+        auditLogService.recordAsync(workspace, user, "workspace.created", "WORKSPACE", workspace.getId());
         cacheInvalidationService.invalidateWorkspace(workspace.getId());
         return toResponse(member);
     }
@@ -126,7 +126,7 @@ public class WorkspaceService {
         Workspace workspace = member.getWorkspace();
         workspace.setName(normalizeName(request.name()));
         workspaceRepository.save(workspace);
-        auditLogService.record(workspace, user, "workspace.updated", "WORKSPACE", workspace.getId());
+        auditLogService.recordAsync(workspace, user, "workspace.updated", "WORKSPACE", workspace.getId());
         cacheInvalidationService.invalidateWorkspace(workspace.getId());
         return toResponse(member);
     }
@@ -138,7 +138,7 @@ public class WorkspaceService {
         Workspace workspace = member.getWorkspace();
         workspace.setPlan(request.plan());
         workspaceRepository.save(workspace);
-        auditLogService.record(workspace, user, "workspace.plan_updated", "WORKSPACE", workspace.getId(), "{\"plan\":\"" + request.plan().name() + "\"}");
+        auditLogService.recordAsync(workspace, user, "workspace.plan_updated", "WORKSPACE", workspace.getId(), "{\"plan\":\"" + request.plan().name() + "\"}");
         cacheInvalidationService.invalidateWorkspace(workspace.getId());
         return toResponse(member);
     }
@@ -155,7 +155,7 @@ public class WorkspaceService {
         }
 
         workspaceRepository.delete(workspace);
-        auditLogService.record(workspace, user, "workspace.deleted", "WORKSPACE", workspace.getId());
+        auditLogService.recordAsync(workspace, user, "workspace.deleted", "WORKSPACE", workspace.getId());
         cacheInvalidationService.invalidateWorkspace(workspace.getId());
     }
 
@@ -214,7 +214,7 @@ public class WorkspaceService {
 
         target.setRole(newRole);
         workspaceMemberRepository.save(target);
-        auditLogService.record(
+        auditLogService.recordAsync(
             target.getWorkspace(),
             actor,
             "member.role_changed",
@@ -236,7 +236,7 @@ public class WorkspaceService {
         ensureNotLastOwnerRemoval(target);
 
         workspaceMemberRepository.delete(target);
-        auditLogService.record(target.getWorkspace(), actor, "member.removed", "WORKSPACE_MEMBER", target.getId());
+        auditLogService.recordAsync(target.getWorkspace(), actor, "member.removed", "WORKSPACE_MEMBER", target.getId());
         cacheInvalidationService.invalidateWorkspace(workspaceId);
     }
 

@@ -130,7 +130,7 @@ public class WorkspaceInvitationService {
         invitation.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
         invitation = invitationRepository.save(invitation);
 
-        auditLogService.record(workspace, actor, "member.invited", "WORKSPACE_INVITATION", invitation.getId());
+        auditLogService.recordAsync(workspace, actor, "member.invited", "WORKSPACE_INVITATION", invitation.getId());
         return toResponse(invitation);
     }
 
@@ -147,7 +147,7 @@ public class WorkspaceInvitationService {
 
         invitation.setStatus(InvitationStatus.CANCELLED);
         invitationRepository.save(invitation);
-        auditLogService.record(workspace, actor, "invitation.cancelled", "WORKSPACE_INVITATION", invitation.getId());
+        auditLogService.recordAsync(workspace, actor, "invitation.cancelled", "WORKSPACE_INVITATION", invitation.getId());
     }
 
     @Transactional
@@ -174,7 +174,7 @@ public class WorkspaceInvitationService {
         invitation.setAcceptedAt(Instant.now());
         invitationRepository.save(invitation);
 
-        auditLogService.record(workspace, user, "invitation.accepted", "WORKSPACE_INVITATION", invitation.getId());
+        auditLogService.recordAsync(workspace, user, "invitation.accepted", "WORKSPACE_INVITATION", invitation.getId());
         return toResponse(invitation);
     }
 
@@ -186,7 +186,7 @@ public class WorkspaceInvitationService {
 
         invitation.setStatus(InvitationStatus.DECLINED);
         invitationRepository.save(invitation);
-        auditLogService.record(invitation.getWorkspace(), user, "invitation.declined", "WORKSPACE_INVITATION", invitation.getId());
+        auditLogService.recordAsync(invitation.getWorkspace(), user, "invitation.declined", "WORKSPACE_INVITATION", invitation.getId());
         return toResponse(invitation);
     }
 

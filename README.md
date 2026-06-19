@@ -14,7 +14,7 @@ LinkVault is a full-stack personal resource vault for organizing links, document
 - JWT authentication, per-user ownership checks, CORS configuration, and structured API responses.
 - Consistent API response envelope with `success`, `message`, `data`, `errorCode`, `details`, and `timestamp`.
 - Flyway-managed initial schema with UUID primary keys, foreign keys, unique constraints, and query indexes.
-- Docker Compose setup for client, server, PostgreSQL, Redis, and pgAdmin.
+- Docker Compose setup for client, server, PostgreSQL, Redis, RabbitMQ, and pgAdmin.
 
 ## Tech Stack
 
@@ -24,6 +24,7 @@ LinkVault is a full-stack personal resource vault for organizing links, document
 | Backend | Java 21, Spring Boot 4, Spring Security, Spring Data JPA |
 | Database | PostgreSQL 16 |
 | Cache / Rate Limit | Redis 7.4 |
+| Message Broker | RabbitMQ 3-management |
 | Storage | Cloudinary |
 | API Docs | Springdoc OpenAPI / Swagger UI |
 | Containers | Docker, Docker Compose, Nginx |
@@ -155,16 +156,17 @@ Frontend: http://localhost:4200
 API:      http://localhost:8080
 Swagger:  http://localhost:8080/swagger-ui.html
 pgAdmin:  http://localhost:5050
+RabbitMQ: http://localhost:15672 (guest/guest)
 ```
 
 The Dockerized frontend proxies `/api` requests to the backend service through Nginx.
 
 ## Local Development
 
-### Start PostgreSQL
+### Start PostgreSQL, Redis, RabbitMQ
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres redis rabbitmq
 ```
 
 ### Start the Backend

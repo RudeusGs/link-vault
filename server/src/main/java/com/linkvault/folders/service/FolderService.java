@@ -104,7 +104,7 @@ public class FolderService {
         Folder folder = new Folder();
         applyRequest(folder, request, vault, null);
         Folder savedFolder = folderRepository.save(folder);
-        auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        auditLogService.recordAsync(vault.getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
         invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
@@ -116,7 +116,7 @@ public class FolderService {
         Folder folder = new Folder();
         applyRequest(folder, request, vault, null);
         Folder savedFolder = folderRepository.save(folder);
-        auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        auditLogService.recordAsync(vault.getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
         invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
@@ -128,7 +128,7 @@ public class FolderService {
         Folder folder = new Folder();
         applyRequest(folder, request, parent.getVault(), parent);
         Folder savedFolder = folderRepository.save(folder);
-        auditLogService.record(parent.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        auditLogService.recordAsync(parent.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
         invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
@@ -140,7 +140,7 @@ public class FolderService {
         Folder folder = new Folder();
         applyRequest(folder, request, parent.getVault(), parent);
         Folder savedFolder = folderRepository.save(folder);
-        auditLogService.record(parent.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
+        auditLogService.recordAsync(parent.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.created", "FOLDER", savedFolder.getId());
         invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
@@ -151,7 +151,7 @@ public class FolderService {
 
         applyRequest(folder, request, folder.getVault(), folder.getParent());
         Folder savedFolder = folderRepository.save(folder);
-        auditLogService.record(savedFolder.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.updated", "FOLDER", savedFolder.getId());
+        auditLogService.recordAsync(savedFolder.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.updated", "FOLDER", savedFolder.getId());
         invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
@@ -162,7 +162,7 @@ public class FolderService {
 
         applyRequest(folder, request, folder.getVault(), folder.getParent());
         Folder savedFolder = folderRepository.save(folder);
-        auditLogService.record(savedFolder.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.updated", "FOLDER", savedFolder.getId());
+        auditLogService.recordAsync(savedFolder.getVault().getWorkspace(), userContextService.getCurrentUser(), "folder.updated", "FOLDER", savedFolder.getId());
         invalidateFolderCaches(savedFolder);
         return toResponse(savedFolder);
     }
@@ -171,7 +171,7 @@ public class FolderService {
     public void delete(UUID id) {
         Folder folder = getFolderForWrite(id);
         User actor = userContextService.getCurrentUser();
-        auditLogService.record(folder.getVault().getWorkspace(), actor, "folder.deleted", "FOLDER", folder.getId());
+        auditLogService.recordAsync(folder.getVault().getWorkspace(), actor, "folder.deleted", "FOLDER", folder.getId());
         deleteFolderTree(folder);
     }
 
@@ -179,7 +179,7 @@ public class FolderService {
     public void delete(UUID workspaceId, UUID id) {
         Folder folder = getFolderForWrite(workspaceId, id);
         User actor = userContextService.getCurrentUser();
-        auditLogService.record(folder.getVault().getWorkspace(), actor, "folder.deleted", "FOLDER", folder.getId());
+        auditLogService.recordAsync(folder.getVault().getWorkspace(), actor, "folder.deleted", "FOLDER", folder.getId());
         deleteFolderTree(folder);
     }
 

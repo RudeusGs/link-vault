@@ -40,9 +40,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.linkvault.common.rabbitmq.RabbitMessagePublisher;
+import com.linkvault.common.rabbitmq.event.LinkPreviewRequestedEvent;
 
 @Service
 public class ResourceService {
@@ -69,6 +72,7 @@ public class ResourceService {
     private final RedisCacheService redisCacheService;
     private final RedisProperties redisProperties;
     private final RedisCacheInvalidationService cacheInvalidationService;
+    private final RabbitMessagePublisher rabbitMessagePublisher;
 
     public ResourceService(
         ResourceRepository resourceRepository,
@@ -89,7 +93,8 @@ public class ResourceService {
         AuditLogService auditLogService,
         RedisCacheService redisCacheService,
         RedisProperties redisProperties,
-        RedisCacheInvalidationService cacheInvalidationService
+        RedisCacheInvalidationService cacheInvalidationService,
+        @Lazy RabbitMessagePublisher rabbitMessagePublisher
     ) {
         this.resourceRepository = resourceRepository;
         this.resourceTagRepository = resourceTagRepository;
@@ -110,6 +115,7 @@ public class ResourceService {
         this.redisCacheService = redisCacheService;
         this.redisProperties = redisProperties;
         this.cacheInvalidationService = cacheInvalidationService;
+        this.rabbitMessagePublisher = rabbitMessagePublisher;
     }
 
     @Transactional(readOnly = true)
@@ -249,7 +255,7 @@ public class ResourceService {
         applyRequest(resource, request, resource.getVault(), resource.getFolder());
         refreshPreviewIfNeeded(resource, previousUrl, false);
         Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
+        auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -270,7 +276,7 @@ public class ResourceService {
         applyRequest(resource, request, resource.getVault(), resource.getFolder());
         refreshPreviewIfNeeded(resource, previousUrl, false);
         Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
+        auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -324,7 +330,7 @@ public class ResourceService {
     @Transactional
     public void delete(UUID id) {
         Resource resource = getResourceForWrite(id);
-        auditLogService.record(resource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.deleted", "RESOURCE", resource.getId());
+        auditLogService.recordAsync(resource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.deleted", "RESOURCE", resource.getId());
         resourceCleanupService.delete(resource);
         invalidateResourceCaches(resource);
     }
@@ -332,7 +338,7 @@ public class ResourceService {
     @Transactional
     public void delete(UUID workspaceId, UUID id) {
         Resource resource = getResourceForWrite(workspaceId, id);
-        auditLogService.record(resource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.deleted", "RESOURCE", resource.getId());
+        auditLogService.recordAsync(resource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.deleted", "RESOURCE", resource.getId());
         resourceCleanupService.delete(resource);
         invalidateResourceCaches(resource);
     }
@@ -342,7 +348,7 @@ public class ResourceService {
         Resource resource = getResourceForWrite(id);
         resource.setIsFavorite(!Boolean.TRUE.equals(resource.getIsFavorite()));
         Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.favorite_toggled", "RESOURCE", savedResource.getId());
+        auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.favorite_toggled", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -352,7 +358,7 @@ public class ResourceService {
         Resource resource = getResourceForWrite(workspaceId, id);
         resource.setIsFavorite(!Boolean.TRUE.equals(resource.getIsFavorite()));
         Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.favorite_toggled", "RESOURCE", savedResource.getId());
+        auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.favorite_toggled", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -362,7 +368,7 @@ public class ResourceService {
         Resource resource = getResourceForWrite(id);
         resource.setIsArchived(!Boolean.TRUE.equals(resource.getIsArchived()));
         Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.archived_toggled", "RESOURCE", savedResource.getId());
+        auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.archived_toggled", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -372,7 +378,7 @@ public class ResourceService {
         Resource resource = getResourceForWrite(workspaceId, id);
         resource.setIsArchived(!Boolean.TRUE.equals(resource.getIsArchived()));
         Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.archived_toggled", "RESOURCE", savedResource.getId());
+        auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.archived_toggled", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -470,7 +476,7 @@ public class ResourceService {
             throw new BadRequestException("Only link resources can refresh link preview");
         }
 
-        applyLinkPreview(resource, true, false);
+        applyLinkPreviewAsync(resource, true, false);
         Resource savedResource = resourceRepository.save(resource);
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
@@ -483,10 +489,23 @@ public class ResourceService {
             throw new BadRequestException("Only link resources can refresh link preview");
         }
 
-        applyLinkPreview(resource, true, false);
+        applyLinkPreviewAsync(resource, true, false);
         Resource savedResource = resourceRepository.save(resource);
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
+    }
+
+    @Transactional
+    public void processLinkPreview(UUID resourceId, boolean force) {
+        Resource resource = resourceRepository.findById(resourceId).orElse(null);
+        if (resource == null || resource.getResourceType() != ResourceType.LINK) {
+            return;
+        }
+
+        applyLinkPreview(resource, force, false);
+        Resource savedResource = resourceRepository.save(resource);
+        invalidateResourceCaches(savedResource);
+        org.slf4j.LoggerFactory.getLogger(ResourceService.class).info("Processed async link preview for resourceId={}", resourceId);
     }
 
     @Transactional(readOnly = true)
@@ -622,7 +641,7 @@ public class ResourceService {
         applyRequest(resource, request, vault, folder);
         refreshPreviewIfNeeded(resource, null, false);
         Resource savedResource = resourceRepository.save(resource);
-        auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.created", "RESOURCE", savedResource.getId());
+        auditLogService.recordAsync(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.created", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -652,7 +671,7 @@ public class ResourceService {
             resource.setStorageKey(storage.publicId());
 
             Resource savedResource = resourceRepository.save(resource);
-            auditLogService.record(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.uploaded", "RESOURCE", savedResource.getId());
+            auditLogService.recordAsync(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.uploaded", "RESOURCE", savedResource.getId());
             invalidateResourceCaches(savedResource);
             return resourceMapper.toResponse(savedResource);
         } catch (RuntimeException exception) {
@@ -756,7 +775,39 @@ public class ResourceService {
             return;
         }
 
-        applyLinkPreview(resource, force, urlChanged);
+        applyLinkPreviewAsync(resource, force, urlChanged);
+    }
+
+    private void applyLinkPreviewAsync(Resource resource, boolean force, boolean clearOnFailure) {
+        resource.setPreviewStatus("PENDING");
+        resource.setPreviewError(null);
+        if (clearOnFailure) {
+            resource.setPreviewTitle(null);
+            resource.setPreviewDescription(null);
+            resource.setFaviconUrl(null);
+            resource.setSiteName(null);
+            resource.setCanonicalUrl(resource.getUrl());
+            resource.setThumbnailUrl(null);
+            if (isBlank(resource.getSourceName())) {
+                resource.setSourceName(trimToNull(linkPreviewService.displayDomain(resource.getUrl())));
+            }
+        }
+        
+        UUID folderId = resource.getFolder() != null ? resource.getFolder().getId() : null;
+        LinkPreviewRequestedEvent event = new LinkPreviewRequestedEvent(
+            resource.getId(),
+            resource.getVault().getWorkspace().getId(),
+            resource.getVault().getId(),
+            folderId,
+            resource.getUrl(),
+            force,
+            Instant.now()
+        );
+        
+        // Use a transaction synchronization to publish after commit, 
+        // or just publish directly if the transaction is short.
+        // For simplicity, we publish directly. If rollback happens, consumer might fail to find resource, which is safe (handled by null check).
+        rabbitMessagePublisher.publishLinkPreviewRequested(event);
     }
 
     private boolean isRecentPreview(Resource resource) {
