@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import {
   DocumentPreview,
@@ -19,19 +19,27 @@ export class ResourceService {
   private readonly workspaceService = inject(WorkspaceService);
 
   list(): Observable<Resource[]> {
-    return this.api.get<Resource[]>(`${this.workspaceService.pathPrefix()}/resources`);
+    return this.api.get<any>(`${this.workspaceService.pathPrefix()}/resources`).pipe(
+      map((res) => (Array.isArray(res) ? res : res.items || []))
+    );
   }
 
   listByVault(vaultId: string): Observable<Resource[]> {
-    return this.api.get<Resource[]>(`${this.workspaceService.pathPrefix()}/vaults/${vaultId}/resources`);
+    return this.api.get<any>(`${this.workspaceService.pathPrefix()}/vaults/${vaultId}/resources`).pipe(
+      map((res) => (Array.isArray(res) ? res : res.items || []))
+    );
   }
 
   listByFolder(folderId: string): Observable<Resource[]> {
-    return this.api.get<Resource[]>(`${this.workspaceService.pathPrefix()}/folders/${folderId}/resources`);
+    return this.api.get<any>(`${this.workspaceService.pathPrefix()}/folders/${folderId}/resources`).pipe(
+      map((res) => (Array.isArray(res) ? res : res.items || []))
+    );
   }
 
   search(params: ResourceSearchParams): Observable<Resource[]> {
-    return this.api.get<Resource[]>(`${this.workspaceService.pathPrefix()}/resources/search`, params);
+    return this.api.get<any>(`${this.workspaceService.pathPrefix()}/resources/search`, params).pipe(
+      map((res) => (Array.isArray(res) ? res : res.items || []))
+    );
   }
 
   get(id: string): Observable<Resource> {

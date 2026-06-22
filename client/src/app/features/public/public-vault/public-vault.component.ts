@@ -117,7 +117,7 @@ export class PublicVaultComponent implements OnInit {
     this.loadingResources = true;
     this.publicApi.getVaultResources(id, { size: 100 }).subscribe({
       next: (res) => {
-        this.resources = res.data.content;
+        this.resources = (res.data as any).items || res.data.content || [];
         this.loadingResources = false;
       },
       error: () => {
