@@ -10,11 +10,10 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import com.linkvault.common.rabbitmq.RabbitMessagePublisher;
+import com.linkvault.common.outbox.OutboxService;
 import com.linkvault.common.rabbitmq.event.AuditLogEvent;
 import java.time.Instant;
 
@@ -25,16 +24,16 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
     private final PermissionService permissionService;
-    private final RabbitMessagePublisher rabbitMessagePublisher;
+    private final OutboxService outboxService;
 
     public AuditLogService(
         AuditLogRepository auditLogRepository, 
         PermissionService permissionService,
-        @Lazy RabbitMessagePublisher rabbitMessagePublisher
+        OutboxService outboxService
     ) {
         this.auditLogRepository = auditLogRepository;
         this.permissionService = permissionService;
-        this.rabbitMessagePublisher = rabbitMessagePublisher;
+        this.outboxService = outboxService;
     }
 
     public void record(Workspace workspace, User actor, String action, String targetType, UUID targetId) {
@@ -66,7 +65,7 @@ public class AuditLogService {
             metadata,
             Instant.now()
         );
-        rabbitMessagePublisher.publishAuditLog(event);
+        outboxService.saveEvent("Workspace", workspace.getId(), "AuditLogEvent", event);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

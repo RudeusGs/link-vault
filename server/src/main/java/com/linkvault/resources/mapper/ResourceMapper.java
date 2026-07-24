@@ -45,6 +45,23 @@ public class ResourceMapper {
         return PageResponse.from(responsePage);
     }
 
+    public com.linkvault.resources.dto.PublicResourceResponse toPublicResponse(Resource resource) {
+        return toPublicResponse(resource, tagsByResourceId(List.of(resource)));
+    }
+
+    public List<com.linkvault.resources.dto.PublicResourceResponse> toPublicResponses(List<Resource> resources) {
+        Map<UUID, List<TagResponse>> tagsByResourceId = tagsByResourceId(resources);
+        return resources.stream()
+            .map(resource -> toPublicResponse(resource, tagsByResourceId))
+            .toList();
+    }
+
+    public PageResponse<com.linkvault.resources.dto.PublicResourceResponse> toPublicPageResponse(Page<Resource> page) {
+        Map<UUID, List<TagResponse>> tagsByResourceId = tagsByResourceId(page.getContent());
+        Page<com.linkvault.resources.dto.PublicResourceResponse> responsePage = page.map(resource -> toPublicResponse(resource, tagsByResourceId));
+        return PageResponse.from(responsePage);
+    }
+
     private ResourceResponse toResponse(Resource resource, Map<UUID, List<TagResponse>> tagsByResourceId) {
         return new ResourceResponse(
             resource.getId(),
@@ -80,6 +97,31 @@ public class ResourceMapper {
             resource.getPublicAccess(),
             resource.getCreatedAt(),
             resource.getUpdatedAt()
+        );
+    }
+
+    private com.linkvault.resources.dto.PublicResourceResponse toPublicResponse(Resource resource, Map<UUID, List<TagResponse>> tagsByResourceId) {
+        return new com.linkvault.resources.dto.PublicResourceResponse(
+            resource.getId(),
+            resource.getVault().getId(),
+            resource.getFolder() == null ? null : resource.getFolder().getId(),
+            resource.getTitle(),
+            resource.getDescription(),
+            resource.getResourceType(),
+            resource.getUrl(),
+            resource.getContent(),
+            resource.getCodeLanguage(),
+            resource.getSourceName(),
+            resource.getSiteName(),
+            resource.getThumbnailUrl(),
+            resource.getFaviconUrl(),
+            resource.getFileSize(),
+            resource.getMimeType(),
+            resource.getPreviewTitle(),
+            resource.getPreviewDescription(),
+            resource.getCreatedAt(),
+            resource.getUpdatedAt(),
+            tagsByResourceId.getOrDefault(resource.getId(), List.of())
         );
     }
 

@@ -38,6 +38,7 @@ class QuotaServiceTest {
     );
 
     @Test
+    @SuppressWarnings("unchecked")
     void requireCanCreateVaultRejectsFreeWorkspaceAtLimit() {
         when(redisCacheService.getOrLoad(
             anyString(),

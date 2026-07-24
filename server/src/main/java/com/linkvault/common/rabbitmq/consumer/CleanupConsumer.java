@@ -19,7 +19,7 @@ public class CleanupConsumer {
             event.workspaceId(), event.cleanupType(), event.targetId());
 
         try {
-            // TODO: Hook into existing cleanup logic if safe methods are added
+            // Note: Hook into existing cleanup logic if safe methods are added
             log.info("Successfully processed cleanup event (logging only for now) for targetId={}", event.targetId());
         } catch (Exception e) {
             log.error("Failed to process cleanup event: {}", event, e);

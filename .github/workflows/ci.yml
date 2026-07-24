@@ -1,0 +1,97 @@
+name: LinkVault CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: linkvault
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3-management
+        env:
+          RABBITMQ_DEFAULT_USER: linkvault
+          RABBITMQ_DEFAULT_PASS: linkvaultrabbit123
+        ports:
+          - 5672:5672
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          
+      - name: Test with Maven
+        working-directory: ./server
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/linkvault
+          SPRING_DATASOURCE_USERNAME: postgres
+          SPRING_DATASOURCE_PASSWORD: password
+          APP_JWT_SECRET: supersecretjwtkeywhichisatleast32characterslong
+        run: mvn -B verify
+
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          cache-dependency-path: ./client/package-lock.json
+          
+      - name: Install dependencies
+        working-directory: ./client
+        run: npm ci
+        
+      - name: Run tests
+        working-directory: ./client
+        run: npm run test -- --watch=false --browsers=ChromeHeadless
+
+  docker-build:
+    name: Docker Build
+    needs: [backend-test, frontend-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Server Docker Image
+        working-directory: ./server
+        run: docker build -t linkvault-server:latest .
+        
+      - name: Build Client Docker Image
+        working-directory: ./client
+        run: docker build -t linkvault-client:latest .

@@ -5,10 +5,11 @@ body {
 
 body {
   margin: 0;
-  color: #111827;
-  background: #f6f7f9;
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -32,12 +33,12 @@ textarea {
 
 .lv-app-bg {
   min-height: 100vh;
-  background: #f6f7f9;
+  background: #f8fafc;
 }
 
 .lv-auth-bg {
   min-height: 100vh;
-  background: #f6f7f9;
+  background: #f8fafc;
 }
 
 .lv-container {
@@ -54,7 +55,8 @@ textarea {
   z-index: 50;
   height: 64px;
   background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
 }
 
 .lv-content {
@@ -66,7 +68,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #111827;
+  color: #0f172a;
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -76,12 +78,13 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid #111827;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #2563eb;
+  border-radius: 9px;
   color: #ffffff;
-  background: #111827;
+  background: #2563eb;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
 }
 
 .lv-nav-link {
@@ -89,17 +92,22 @@ textarea {
   align-items: center;
   gap: 7px;
   min-height: 36px;
-  padding: 0 10px;
-  border-radius: 9px;
-  color: #4b5563;
-  font-weight: 650;
-  transition: background 0.16s ease, color 0.16s ease;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: 600;
+  transition: all 0.16s ease;
 }
 
-.lv-nav-link:hover,
+.lv-nav-link:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
 .lv-nav-link.active {
-  color: #111827;
-  background: #f3f4f6;
+  color: #2563eb;
+  background: #eff6ff;
+  font-weight: 700;
 }
 
 .lv-nav-link .material-symbols-outlined {
@@ -109,13 +117,13 @@ textarea {
 .lv-search {
   width: 250px;
   height: 38px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
   background: #ffffff;
   padding: 8px 12px 8px 38px;
-  color: #111827;
+  color: #0f172a;
   outline: none;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  transition: all 0.16s ease;
 }
 
 .lv-search:focus,
@@ -130,7 +138,7 @@ textarea {
   top: 50%;
   left: 12px;
   transform: translateY(-50%);
-  color: #6b7280;
+  color: #64748b;
   pointer-events: none;
 }
 
@@ -151,67 +159,68 @@ textarea {
 }
 
 .lv-page-kicker {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #2563eb;
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .lv-page-title {
   margin: 0;
-  color: #111827;
-  font-size: 34px;
-  line-height: 1.15;
-  font-weight: 820;
-  letter-spacing: -0.045em;
+  color: #0f172a;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.035em;
 }
 
 .lv-section-title {
   margin: 0;
-  color: #111827;
+  color: #0f172a;
   font-size: 20px;
   line-height: 1.3;
-  font-weight: 760;
+  font-weight: 750;
   letter-spacing: -0.02em;
 }
 
 .lv-muted {
-  color: #6b7280;
+  color: #64748b;
 }
 
 .lv-subtle {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .lv-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 1px 2px #e5e7eb;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
 }
 
 .lv-card-hover {
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  transition: all 0.16s ease;
 }
 
 .lv-card-hover:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 8px 20px #e5e7eb;
+  border-color: #93c5fd;
+  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.12);
   transform: translateY(-2px);
 }
 
 .lv-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
   background: #ffffff;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.03);
 }
 
 .lv-soft-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #f9fafb;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
 .lv-icon-box {
@@ -222,15 +231,15 @@ textarea {
   height: 42px;
   flex: 0 0 auto;
   border: 1px solid #dbeafe;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #2563eb;
   background: #eff6ff;
 }
 
 .lv-icon-box-lg {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
 }
 
 .lv-primary {
@@ -249,9 +258,9 @@ textarea {
 }
 
 .lv-badge-secondary {
-  color: #374151;
-  border: 1px solid #d1d5db;
-  background: #f3f4f6;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
 }
 
 .lv-badge-success {
@@ -261,7 +270,7 @@ textarea {
 }
 
 .lv-badge-warning {
-  color: #92400e;
+  color: #b45309;
   border: 1px solid #fde68a;
   background: #fffbeb;
 }
@@ -292,24 +301,25 @@ textarea {
 
 .lv-empty-state {
   border: 1px dashed #cbd5e1;
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 36px;
-  color: #6b7280;
+  color: #64748b;
   text-align: center;
   background: #ffffff;
 }
 
 .lv-button-quiet {
-  border: 1px solid #e5e7eb;
-  color: #374151;
+  border: 1px solid #e2e8f0;
+  color: #334155;
   background: #ffffff;
+  transition: all 0.16s ease;
 }
 
 .lv-button-quiet:hover,
 .lv-button-quiet:focus {
   border-color: #cbd5e1;
-  color: #111827;
-  background: #f9fafb;
+  color: #0f172a;
+  background: #f8fafc;
 }
 
 .lv-icon-button {
@@ -319,17 +329,17 @@ textarea {
   width: 38px;
   height: 38px;
   border: 1px solid transparent;
-  border-radius: 10px;
-  color: #4b5563;
+  border-radius: 8px;
+  color: #475569;
   background: transparent;
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+  transition: all 0.16s ease;
 }
 
 .lv-icon-button:hover,
 .lv-icon-button:focus {
-  border-color: #e5e7eb;
-  color: #111827;
-  background: #f9fafb;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  background: #f1f5f9;
 }
 
 .lv-action-toolbar,
@@ -349,7 +359,7 @@ textarea {
 .form-control,
 .form-select,
 .btn {
-  border-radius: 10px;
+  border-radius: 9px;
 }
 
 .btn {
@@ -359,6 +369,7 @@ textarea {
 .btn-primary {
   border-color: #2563eb;
   background: #2563eb;
+  box-shadow: 0 1px 2px 0 rgba(37, 99, 235, 0.2);
 }
 
 .btn-primary:hover,
@@ -369,7 +380,7 @@ textarea {
 
 .btn-outline-primary {
   color: #2563eb;
-  border-color: #93c5fd;
+  border-color: #bfdbfe;
 }
 
 .btn-outline-primary:hover,
@@ -380,14 +391,21 @@ textarea {
 }
 
 .dropdown-menu {
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  box-shadow: 0 12px 30px #e5e7eb;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
 }
 
 .dropdown-item {
-  border-radius: 9px;
+  border-radius: 8px;
   font-weight: 600;
+  color: #334155;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  color: #2563eb;
+  background: #eff6ff;
 }
 
 .lv-topbar-select {
@@ -396,17 +414,18 @@ textarea {
   gap: 8px;
   max-width: 230px;
   height: 38px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
   padding: 0 11px;
-  color: #111827;
+  color: #0f172a;
   background: #ffffff;
   font-weight: 700;
+  transition: all 0.16s ease;
 }
 
 .lv-topbar-select:hover {
-  border-color: #cbd5e1;
-  background: #f9fafb;
+  border-color: #2563eb;
+  background: #f8fafc;
 }
 
 .lv-invite-badge {
@@ -430,12 +449,12 @@ textarea {
 }
 
 .lv-table thead th {
-  color: #6b7280;
+  color: #64748b;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: #f9fafb;
+  background: #f8fafc;
 }
 
 .lv-modal-backdrop {
@@ -446,7 +465,7 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: #111827;
+  background: rgba(15, 23, 42, 0.65);
 }
 
 .lv-modal-card {
@@ -454,10 +473,10 @@ textarea {
   max-width: 720px;
   max-height: calc(100vh - 40px);
   overflow: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
   background: #ffffff;
-  box-shadow: 0 18px 36px #d1d5db;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
 }
 
 .lv-workspace-shell {

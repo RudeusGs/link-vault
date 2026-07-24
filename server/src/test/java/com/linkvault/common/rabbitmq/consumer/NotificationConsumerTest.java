@@ -10,10 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 class NotificationConsumerTest {
 
-    private final NotificationConsumer consumer = new NotificationConsumer();
-
     @Test
     void consumeNotification_ShouldNotThrowException() {
+        NotificationConsumer consumer = new NotificationConsumer();
         NotificationEvent event = new NotificationEvent(
             UUID.randomUUID(), UUID.randomUUID(), "test_event", "title", "message", UUID.randomUUID(), Instant.now()
         );

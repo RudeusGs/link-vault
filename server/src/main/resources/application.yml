@@ -31,6 +31,15 @@ spring:
     username: ${SPRING_RABBITMQ_USERNAME:linkvault}
     password: ${SPRING_RABBITMQ_PASSWORD:linkvaultrabbit123}
     virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      retry:
+        enabled: true
+        max-attempts: ${APP_RABBITMQ_RETRY_MAX_ATTEMPTS:3}
+        initial-interval: ${APP_RABBITMQ_RETRY_INITIAL_INTERVAL:1000}ms
+        multiplier: ${APP_RABBITMQ_RETRY_MULTIPLIER:2.0}
+        max-interval: ${APP_RABBITMQ_RETRY_MAX_INTERVAL:10000}ms
     listener:
       simple:
         retry:
@@ -50,6 +59,7 @@ spring:
 
 server:
   port: 8080
+  forward-headers-strategy: framework
 
 app:
   seed-demo-data: ${APP_SEED_DEMO_DATA:false}

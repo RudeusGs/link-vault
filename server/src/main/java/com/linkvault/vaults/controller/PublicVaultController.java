@@ -7,7 +7,7 @@ import com.linkvault.common.exception.UnauthorizedException;
 import com.linkvault.common.response.ApiResponse;
 import com.linkvault.common.redis.RedisCacheInvalidationService;
 import com.linkvault.common.pagination.PageResponse;
-import com.linkvault.resources.dto.ResourceResponse;
+import com.linkvault.resources.dto.PublicResourceResponse;
 import com.linkvault.resources.mapper.ResourceMapper;
 import com.linkvault.resources.repository.ResourceRepository;
 import com.linkvault.vaults.dto.VaultRequest;
@@ -15,6 +15,8 @@ import com.linkvault.vaults.dto.VaultResponse;
 import com.linkvault.vaults.entity.Vault;
 import com.linkvault.vaults.repository.VaultRepository;
 import com.linkvault.vaults.service.VaultService;
+import com.linkvault.sharing.service.ShareLinkService;
+import com.linkvault.workspaces.service.QuotaService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -29,60 +31,76 @@ public class PublicVaultController {
     private final ResourceRepository resourceRepository;
     private final ResourceMapper resourceMapper;
     private final RedisCacheInvalidationService cacheInvalidationService;
+    private final ShareLinkService shareLinkService;
+    private final QuotaService quotaService;
 
     public PublicVaultController(
         VaultRepository vaultRepository, 
         VaultService vaultService,
         ResourceRepository resourceRepository,
         ResourceMapper resourceMapper,
-        RedisCacheInvalidationService cacheInvalidationService
+        RedisCacheInvalidationService cacheInvalidationService,
+        ShareLinkService shareLinkService,
+        QuotaService quotaService
     ) {
         this.vaultRepository = vaultRepository;
         this.vaultService = vaultService;
         this.resourceRepository = resourceRepository;
         this.resourceMapper = resourceMapper;
         this.cacheInvalidationService = cacheInvalidationService;
+        this.shareLinkService = shareLinkService;
+        this.quotaService = quotaService;
     }
 
-    private Vault requirePublicVault(UUID id, boolean requireEdit) {
+    private Vault requirePublicVault(UUID id, boolean requireEdit, String shareToken) {
         Vault vault = vaultRepository.findById(id)
             .orElseThrow(() -> new NotFoundException(ErrorCode.VAULT_NOT_FOUND, "Vault not found"));
+            
+        if (shareToken != null && !shareToken.isBlank()) {
+            shareLinkService.validateAndRecordAccess(shareToken, "VAULT", id, requireEdit);
+            return vault;
+        }
             
         if (vault.getPublicAccess() == PublicAccess.PRIVATE) {
             throw new UnauthorizedException("This vault is private");
         }
         
-        if (requireEdit && vault.getPublicAccess() != PublicAccess.EDIT) {
-            throw new UnauthorizedException("You do not have permission to edit this vault");
+        if (requireEdit) {
+            throw new UnauthorizedException("Editing requires a secure share token");
         }
         
         return vault;
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<VaultResponse> getPublicVault(@PathVariable UUID id) {
-        Vault vault = requirePublicVault(id, false);
+    public ApiResponse<VaultResponse> getPublicVault(
+        @PathVariable UUID id,
+        @RequestParam(name = "share_token", required = false) String shareToken
+    ) {
+        Vault vault = requirePublicVault(id, false, shareToken);
         return ApiResponse.success("Vault loaded", vaultService.toResponse(vault));
     }
 
     @GetMapping("/{id}/resources")
-    public ApiResponse<PageResponse<ResourceResponse>> getPublicVaultResources(
+    public ApiResponse<PageResponse<PublicResourceResponse>> getPublicVaultResources(
         @PathVariable UUID id,
+        @RequestParam(name = "share_token", required = false) String shareToken,
         Pageable pageable
     ) {
-        Vault vault = requirePublicVault(id, false);
+        Vault vault = requirePublicVault(id, false, shareToken);
         return ApiResponse.success(
             "Resources loaded", 
-            resourceMapper.toPageResponse(resourceRepository.findByVault_Id(vault.getId(), pageable))
+            resourceMapper.toPublicPageResponse(resourceRepository.findByVault_Id(vault.getId(), pageable))
         );
     }
 
     @PutMapping("/{id}")
     public ApiResponse<VaultResponse> updatePublicVault(
         @PathVariable UUID id,
+        @RequestParam(name = "share_token", required = false) String shareToken,
         @Valid @RequestBody VaultRequest request
     ) {
-        Vault vault = requirePublicVault(id, true);
+        Vault vault = requirePublicVault(id, true, shareToken);
         
         vault.setName(request.name().trim());
         vault.setDescription(request.description() != null ? request.description().trim() : null);
@@ -96,12 +114,15 @@ public class PublicVaultController {
     }
 
     @PostMapping("/{id}/resources")
-    public ApiResponse<ResourceResponse> createPublicResource(
+    public ApiResponse<PublicResourceResponse> createPublicResource(
         @PathVariable UUID id,
+        @RequestParam(name = "share_token", required = false) String shareToken,
         @Valid @RequestBody com.linkvault.resources.dto.ResourceRequest request
     ) {
-        Vault vault = requirePublicVault(id, true);
+        Vault vault = requirePublicVault(id, true, shareToken);
         
+        quotaService.requireCanCreateResource(vault.getWorkspace());
+
         com.linkvault.resources.entity.Resource resource = new com.linkvault.resources.entity.Resource();
         resource.setVault(vault);
         resource.setTitle(request.title().trim());
@@ -117,8 +138,7 @@ public class PublicVaultController {
         cacheInvalidationService.invalidateWorkspace(savedResource.getVault().getWorkspace().getId());
         cacheInvalidationService.invalidateVault(savedResource.getVault().getId());
         cacheInvalidationService.invalidateResource(savedResource.getId());
-        return ApiResponse.success("Resource created", resourceMapper.toResponse(savedResource));
+        
+        return ApiResponse.success("Resource created", resourceMapper.toPublicResponse(savedResource));
     }
 }
-
-

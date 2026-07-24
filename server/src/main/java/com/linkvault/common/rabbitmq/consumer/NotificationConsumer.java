@@ -19,7 +19,7 @@ public class NotificationConsumer {
             event.workspaceId(), event.eventType(), event.targetId());
 
         try {
-            // TODO: Implement actual notification logic when NotificationService is available
+            // Note: Implement actual notification logic when NotificationService is available
             log.info("Successfully processed notification event (logging only for now): {}", event.title());
         } catch (Exception e) {
             log.error("Failed to process notification event: {}", event, e);

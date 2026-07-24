@@ -64,7 +64,6 @@ class ResourceServiceUploadTest {
         // Use reflection to invoke the private uploadFile method for testing
         // For testing purposes, we can test uploadFileToVault
         
-        ResourceService spyResourceService = spy(resourceService);
         // We will just invoke uploadFileToVault but mock vaultService which we didn't inject
     }
 }

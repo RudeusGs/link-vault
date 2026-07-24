@@ -10,10 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 class CleanupConsumerTest {
 
-    private final CleanupConsumer consumer = new CleanupConsumer();
-
     @Test
     void consumeCleanup_ShouldNotThrowException() {
+        CleanupConsumer consumer = new CleanupConsumer();
         CleanupEvent event = new CleanupEvent(
             "test_cleanup", UUID.randomUUID(), UUID.randomUUID(), Instant.now()
         );

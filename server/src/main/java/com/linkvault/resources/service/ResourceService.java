@@ -25,6 +25,7 @@ import com.linkvault.resources.enums.ResourceType;
 import com.linkvault.resources.mapper.ResourceMapper;
 import com.linkvault.resources.repository.ResourceRepository;
 import com.linkvault.resources.repository.ResourceTagRepository;
+import com.linkvault.resources.util.FileValidationUtil;
 import com.linkvault.resources.repository.ResourceViewRepository;
 import com.linkvault.storage.dto.StorageResult;
 import com.linkvault.storage.service.StorageService;
@@ -40,11 +41,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import com.linkvault.common.rabbitmq.RabbitMessagePublisher;
+import com.linkvault.common.outbox.OutboxService;
 import com.linkvault.common.rabbitmq.event.LinkPreviewRequestedEvent;
 
 @Service
@@ -72,7 +72,7 @@ public class ResourceService {
     private final RedisCacheService redisCacheService;
     private final RedisProperties redisProperties;
     private final RedisCacheInvalidationService cacheInvalidationService;
-    private final RabbitMessagePublisher rabbitMessagePublisher;
+    private final OutboxService outboxService;
 
     public ResourceService(
         ResourceRepository resourceRepository,
@@ -94,7 +94,7 @@ public class ResourceService {
         RedisCacheService redisCacheService,
         RedisProperties redisProperties,
         RedisCacheInvalidationService cacheInvalidationService,
-        @Lazy RabbitMessagePublisher rabbitMessagePublisher
+        OutboxService outboxService
     ) {
         this.resourceRepository = resourceRepository;
         this.resourceTagRepository = resourceTagRepository;
@@ -115,7 +115,7 @@ public class ResourceService {
         this.redisCacheService = redisCacheService;
         this.redisProperties = redisProperties;
         this.cacheInvalidationService = cacheInvalidationService;
-        this.rabbitMessagePublisher = rabbitMessagePublisher;
+        this.outboxService = outboxService;
     }
 
     @Transactional(readOnly = true)
@@ -253,8 +253,11 @@ public class ResourceService {
         }
 
         applyRequest(resource, request, resource.getVault(), resource.getFolder());
-        refreshPreviewIfNeeded(resource, previousUrl, false);
-        Resource savedResource = resourceRepository.save(resource);
+        boolean dispatchPreview = refreshPreviewIfNeeded(resource, previousUrl, false);
+        Resource savedResource = resourceRepository.saveAndFlush(resource);
+        if (dispatchPreview) {
+            dispatchLinkPreviewEvent(savedResource, false);
+        }
         auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
@@ -274,8 +277,11 @@ public class ResourceService {
         }
 
         applyRequest(resource, request, resource.getVault(), resource.getFolder());
-        refreshPreviewIfNeeded(resource, previousUrl, false);
-        Resource savedResource = resourceRepository.save(resource);
+        boolean dispatchPreview = refreshPreviewIfNeeded(resource, previousUrl, false);
+        Resource savedResource = resourceRepository.saveAndFlush(resource);
+        if (dispatchPreview) {
+            dispatchLinkPreviewEvent(savedResource, false);
+        }
         auditLogService.recordAsync(savedResource.getVault().getWorkspace(), userContextService.getCurrentUser(), "resource.updated", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
@@ -476,8 +482,11 @@ public class ResourceService {
             throw new BadRequestException("Only link resources can refresh link preview");
         }
 
-        applyLinkPreviewAsync(resource, true, false);
-        Resource savedResource = resourceRepository.save(resource);
+        boolean dispatchPreview = prepareLinkPreviewAsync(resource, true, false);
+        Resource savedResource = resourceRepository.saveAndFlush(resource);
+        if (dispatchPreview) {
+            dispatchLinkPreviewEvent(savedResource, true);
+        }
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
@@ -489,16 +498,24 @@ public class ResourceService {
             throw new BadRequestException("Only link resources can refresh link preview");
         }
 
-        applyLinkPreviewAsync(resource, true, false);
-        Resource savedResource = resourceRepository.save(resource);
+        boolean dispatchPreview = prepareLinkPreviewAsync(resource, true, false);
+        Resource savedResource = resourceRepository.saveAndFlush(resource);
+        if (dispatchPreview) {
+            dispatchLinkPreviewEvent(savedResource, true);
+        }
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
     }
 
     @Transactional
-    public void processLinkPreview(UUID resourceId, boolean force) {
+    public void processLinkPreview(UUID resourceId, String expectedUrl, boolean force) {
         Resource resource = resourceRepository.findById(resourceId).orElse(null);
         if (resource == null || resource.getResourceType() != ResourceType.LINK) {
+            return;
+        }
+        
+        if (expectedUrl != null && !expectedUrl.equals(resource.getUrl())) {
+            org.slf4j.LoggerFactory.getLogger(ResourceService.class).info("Skipping stale link preview for resourceId={}, expectedUrl={}, actualUrl={}", resourceId, expectedUrl, resource.getUrl());
             return;
         }
 
@@ -506,6 +523,18 @@ public class ResourceService {
         Resource savedResource = resourceRepository.save(resource);
         invalidateResourceCaches(savedResource);
         org.slf4j.LoggerFactory.getLogger(ResourceService.class).info("Processed async link preview for resourceId={}", resourceId);
+    }
+
+    @Transactional
+    public void markLinkPreviewFailed(UUID resourceId, String error) {
+        Resource resource = resourceRepository.findById(resourceId).orElse(null);
+        if (resource == null || resource.getResourceType() != ResourceType.LINK) {
+            return;
+        }
+        resource.setPreviewStatus("FAILED");
+        resource.setPreviewError(error != null && error.length() > 1000 ? error.substring(0, 997) + "..." : error);
+        Resource savedResource = resourceRepository.save(resource);
+        invalidateResourceCaches(savedResource);
     }
 
     @Transactional(readOnly = true)
@@ -637,10 +666,15 @@ public class ResourceService {
             throw new BadRequestException("Use upload endpoint to create file resources");
         }
 
+        quotaService.requireCanCreateResource(vault.getWorkspace());
+
         Resource resource = new Resource();
         applyRequest(resource, request, vault, folder);
-        refreshPreviewIfNeeded(resource, null, false);
-        Resource savedResource = resourceRepository.save(resource);
+        boolean dispatchPreview = refreshPreviewIfNeeded(resource, null, false);
+        Resource savedResource = resourceRepository.saveAndFlush(resource);
+        if (dispatchPreview) {
+            dispatchLinkPreviewEvent(savedResource, false);
+        }
         auditLogService.recordAsync(vault.getWorkspace(), userContextService.getCurrentUser(), "resource.created", "RESOURCE", savedResource.getId());
         invalidateResourceCaches(savedResource);
         return resourceMapper.toResponse(savedResource);
@@ -654,6 +688,7 @@ public class ResourceService {
         MultipartFile file
     ) {
         quotaService.requireCanUpload(vault.getWorkspace(), file.getSize());
+        FileValidationUtil.validateMagicNumber(file);
         StorageResult storage = storageService.upload(file);
 
         try {
@@ -676,7 +711,7 @@ public class ResourceService {
             return resourceMapper.toResponse(savedResource);
         } catch (RuntimeException exception) {
             try {
-                storageService.delete(storage.publicId());
+                storageService.delete(storage.publicId(), storage.mimeType(), storage.originalFilename());
             } catch (Exception cleanupException) {
                 org.slf4j.LoggerFactory.getLogger(ResourceService.class)
                     .error("Failed to clean up storage file after DB save failure: " + storage.publicId(), cleanupException);
@@ -765,20 +800,20 @@ public class ResourceService {
         resource.setStorageKey(null);
     }
 
-    private void refreshPreviewIfNeeded(Resource resource, String previousUrl, boolean force) {
+    private boolean refreshPreviewIfNeeded(Resource resource, String previousUrl, boolean force) {
         if (resource.getResourceType() != ResourceType.LINK) {
-            return;
+            return false;
         }
 
         boolean urlChanged = previousUrl == null || !previousUrl.equals(resource.getUrl());
         if (!force && !urlChanged && isRecentPreview(resource)) {
-            return;
+            return false;
         }
 
-        applyLinkPreviewAsync(resource, force, urlChanged);
+        return prepareLinkPreviewAsync(resource, force, urlChanged);
     }
 
-    private void applyLinkPreviewAsync(Resource resource, boolean force, boolean clearOnFailure) {
+    private boolean prepareLinkPreviewAsync(Resource resource, boolean force, boolean clearOnFailure) {
         resource.setPreviewStatus("PENDING");
         resource.setPreviewError(null);
         if (clearOnFailure) {
@@ -792,22 +827,26 @@ public class ResourceService {
                 resource.setSourceName(trimToNull(linkPreviewService.displayDomain(resource.getUrl())));
             }
         }
-        
-        UUID folderId = resource.getFolder() != null ? resource.getFolder().getId() : null;
+        return true;
+    }
+
+    private void dispatchLinkPreviewEvent(Resource savedResource, boolean force) {
+        if (savedResource.getId() == null) {
+            throw new IllegalStateException("Cannot dispatch link preview event for resource with null ID");
+        }
+        UUID folderId = savedResource.getFolder() != null ? savedResource.getFolder().getId() : null;
         LinkPreviewRequestedEvent event = new LinkPreviewRequestedEvent(
-            resource.getId(),
-            resource.getVault().getWorkspace().getId(),
-            resource.getVault().getId(),
+            savedResource.getId(),
+            savedResource.getVault().getWorkspace().getId(),
+            savedResource.getVault().getId(),
             folderId,
-            resource.getUrl(),
+            savedResource.getUrl(),
             force,
             Instant.now()
         );
         
-        // Use a transaction synchronization to publish after commit, 
-        // or just publish directly if the transaction is short.
-        // For simplicity, we publish directly. If rollback happens, consumer might fail to find resource, which is safe (handled by null check).
-        rabbitMessagePublisher.publishLinkPreviewRequested(event);
+        // Save to transactional outbox
+        outboxService.saveEvent("Resource", savedResource.getId(), "LinkPreviewRequestedEvent", event);
     }
 
     private boolean isRecentPreview(Resource resource) {

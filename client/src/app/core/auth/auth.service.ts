@@ -46,6 +46,12 @@ export class AuthService {
     return this.api.get<AuthUser>('/auth/me').pipe(tap((user) => this.setUser(user)));
   }
 
+  refreshToken(): Observable<AuthResponse> {
+    return this.api.post<AuthResponse>('/auth/refresh', {}).pipe(
+      tap((response) => this.applySession(response))
+    );
+  }
+
   checkAvailability(username: string, email: string): Observable<AvailabilityResponse> {
     return this.api.get<AvailabilityResponse>('/auth/availability', { username, email });
   }

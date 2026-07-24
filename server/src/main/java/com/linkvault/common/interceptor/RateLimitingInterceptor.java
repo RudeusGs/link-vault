@@ -34,7 +34,16 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI();
         RedisProperties.RateLimit limits = redisProperties.getRateLimit();
 
-        if (path.startsWith("/api/auth")) {
+        if (path.equals("/api/auth/register")) {
+            boolean allowed = redisRateLimiter.consume(
+                RedisKeys.rateLimitRegister(extractIp(request)),
+                limits.getRegisterCapacity(),
+                limits.getRegisterWindow()
+            );
+            if (!allowed) {
+                throw new TooManyRequestsException(ErrorCode.AUTH_TOO_MANY_ATTEMPTS, "Too many registration requests. Please try again later.");
+            }
+        } else if (path.startsWith("/api/auth")) {
             boolean allowed = redisRateLimiter.consume(
                 RedisKeys.rateLimitAuth(extractIp(request)),
                 limits.getAuthCapacity(),
@@ -60,6 +69,15 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
             );
             if (!allowed) {
                 throw new TooManyRequestsException(ErrorCode.GENERAL_TOO_MANY_REQUESTS, "Too many preview requests");
+            }
+        } else if (path.startsWith("/api/public")) {
+            boolean allowed = redisRateLimiter.consume(
+                RedisKeys.rateLimitPublic(extractIp(request)),
+                limits.getPublicCapacity(),
+                limits.getPublicWindow()
+            );
+            if (!allowed) {
+                throw new TooManyRequestsException(ErrorCode.GENERAL_TOO_MANY_REQUESTS, "Too many public requests");
             }
         }
 

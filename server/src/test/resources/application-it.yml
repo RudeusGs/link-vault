@@ -1,0 +1,18 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: false
+  flyway:
+    enabled: true
+app:
+  seed-demo-data: false
+  jwt:
+    secret: test-jwt-secret-that-is-long-enough-for-hmac
+  redis:
+    enabled: false
+    rate-limit:
+      enabled: false
+  rabbitmq:
+    enabled: false
