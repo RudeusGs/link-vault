@@ -44,7 +44,7 @@ public class ResourceCleanupService {
             
             if (resource.getResourceType() == ResourceType.FILE && resource.getStorageKey() != null) {
                 try {
-                    storageService.delete(resource.getStorageKey());
+                    storageService.delete(resource.getStorageKey(), resource.getMimeType(), resource.getFileName());
                 } catch (Exception exception) {
                     org.slf4j.LoggerFactory.getLogger(ResourceCleanupService.class)
                         .error("Failed to delete storage file: " + resource.getStorageKey(), exception);

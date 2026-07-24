@@ -51,12 +51,20 @@ public final class RedisKeys {
         return "rate-limit:auth:" + sha256(clientKey);
     }
 
+    public static String rateLimitRegister(String clientKey) {
+        return "rate-limit:register:" + sha256(clientKey);
+    }
+
     public static String rateLimitUpload(String clientKey) {
         return "rate-limit:upload:" + sha256(clientKey);
     }
 
     public static String rateLimitPreview(String clientKey) {
         return "rate-limit:preview:" + sha256(clientKey);
+    }
+
+    public static String rateLimitPublic(String clientKey) {
+        return "rate-limit:public:" + sha256(clientKey);
     }
 
     public static String workspacePattern(UUID workspaceId) {

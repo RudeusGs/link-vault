@@ -7,16 +7,22 @@ import com.linkvault.common.exception.NotFoundException;
 import com.linkvault.common.exception.UnauthorizedException;
 import com.linkvault.common.response.ApiResponse;
 import com.linkvault.common.redis.RedisCacheInvalidationService;
+import com.linkvault.resources.dto.PublicResourceResponse;
 import com.linkvault.resources.dto.ResourceRequest;
-import com.linkvault.resources.dto.ResourceResponse;
 import com.linkvault.resources.entity.Resource;
 import com.linkvault.resources.mapper.ResourceMapper;
 import com.linkvault.resources.repository.ResourceRepository;
-import com.linkvault.resources.service.ResourceService;
+import com.linkvault.resources.service.ResourcePreviewService;
 import com.linkvault.vaults.entity.Vault;
-import com.linkvault.vaults.repository.VaultRepository;
 import jakarta.validation.Valid;
+import com.linkvault.sharing.service.ShareLinkService;
 import java.util.UUID;
+import com.linkvault.resources.dto.ResourceFileContent;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,28 +30,33 @@ import org.springframework.web.bind.annotation.*;
 public class PublicResourceController {
 
     private final ResourceRepository resourceRepository;
-    private final ResourceService resourceService;
+    private final ResourcePreviewService resourcePreviewService;
     private final ResourceMapper resourceMapper;
-    private final VaultRepository vaultRepository;
     private final RedisCacheInvalidationService cacheInvalidationService;
+    private final ShareLinkService shareLinkService;
 
     public PublicResourceController(
         ResourceRepository resourceRepository,
-        ResourceService resourceService,
+        ResourcePreviewService resourcePreviewService,
         ResourceMapper resourceMapper,
-        VaultRepository vaultRepository,
-        RedisCacheInvalidationService cacheInvalidationService
+        RedisCacheInvalidationService cacheInvalidationService,
+        ShareLinkService shareLinkService
     ) {
         this.resourceRepository = resourceRepository;
-        this.resourceService = resourceService;
+        this.resourcePreviewService = resourcePreviewService;
         this.resourceMapper = resourceMapper;
-        this.vaultRepository = vaultRepository;
         this.cacheInvalidationService = cacheInvalidationService;
+        this.shareLinkService = shareLinkService;
     }
 
-    private Resource requirePublicResource(UUID id, boolean requireEdit) {
+    private Resource requirePublicResource(UUID id, boolean requireEdit, String shareToken) {
         Resource resource = resourceRepository.findById(id)
             .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found"));
+
+        if (shareToken != null && !shareToken.isBlank()) {
+            shareLinkService.validateAndRecordAccess(shareToken, "RESOURCE", id, requireEdit);
+            return resource;
+        }
 
         Vault vault = resource.getVault();
 
@@ -58,36 +69,35 @@ public class PublicResourceController {
         }
 
         if (requireEdit) {
-            boolean canEditResource = resource.getPublicAccess() == PublicAccess.EDIT;
-            boolean canEditVault = vault.getPublicAccess() == PublicAccess.EDIT;
-            
-            if (!canEditResource && !canEditVault) {
-                throw new UnauthorizedException("You do not have permission to edit this resource");
-            }
+            throw new UnauthorizedException("Editing requires a secure share token");
         }
 
         return resource;
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<ResourceResponse> getPublicResource(@PathVariable UUID id) {
-        Resource resource = requirePublicResource(id, false);
-        return ApiResponse.success("Resource loaded", resourceMapper.toResponse(resource));
+    public ApiResponse<PublicResourceResponse> getPublicResource(
+        @PathVariable UUID id,
+        @RequestParam(name = "share_token", required = false) String shareToken
+    ) {
+        Resource resource = requirePublicResource(id, false, shareToken);
+        return ApiResponse.success("Resource loaded", resourceMapper.toPublicResponse(resource));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ResourceResponse> updatePublicResource(
+    public ApiResponse<PublicResourceResponse> updatePublicResource(
         @PathVariable UUID id,
+        @RequestParam(name = "share_token", required = false) String shareToken,
         @Valid @RequestBody ResourceRequest request
     ) {
         // Only checking if the individual resource or its parent vault is editable
-        requirePublicResource(id, true);
+        requirePublicResource(id, true, shareToken);
         
         // We can just use the regular ResourceService update method which will save it,
         // BUT ResourceService.update calls getResourceForWrite which checks workspace permissions.
         // So we cannot reuse resourceService.update here. We must update manually.
         
-        Resource resource = requirePublicResource(id, true);
+        Resource resource = requirePublicResource(id, true, shareToken);
         
         if (request.resourceType() != resource.getResourceType()) {
             throw new BadRequestException("Cannot change resource type");
@@ -108,8 +118,26 @@ public class PublicResourceController {
         if (savedResource.getFolder() != null) {
             cacheInvalidationService.invalidateFolder(savedResource.getFolder().getId());
         }
-        return ApiResponse.success("Resource updated", resourceMapper.toResponse(savedResource));
+        return ApiResponse.success("Resource updated", resourceMapper.toPublicResponse(savedResource));
+    }
+
+    @GetMapping("/{id}/file")
+    public ResponseEntity<byte[]> getPublicFile(
+        @PathVariable UUID id,
+        @RequestParam(name = "share_token", required = false) String shareToken
+    ) {
+        Resource resource = requirePublicResource(id, false, shareToken);
+        ResourceFileContent file = resourcePreviewService.fileContent(resource);
+        MediaType mediaType = MediaType.parseMediaType(file.mimeType());
+        ContentDisposition disposition = ContentDisposition.inline()
+            .filename(file.fileName() == null ? "resource-file" : file.fileName())
+            .build();
+
+        return ResponseEntity.ok()
+            .contentType(mediaType)
+            .cacheControl(CacheControl.noStore())
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .body(file.content());
     }
 }
-
 

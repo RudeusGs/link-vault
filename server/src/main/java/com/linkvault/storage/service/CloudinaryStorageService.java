@@ -103,12 +103,15 @@ public class CloudinaryStorageService implements StorageService {
     }
 
     @Override
-    public void delete(String storageKey) {
+    public void delete(String storageKey, String mimeType, String fileName) {
         if (storageKey == null || storageKey.isBlank()) {
             return;
         }
         try {
-            cloudinary.uploader().destroy(storageKey, ObjectUtils.emptyMap());
+            String extension = extensionOf(fileName);
+            String resolvedMimeType = resolveMimeType(mimeType, extension);
+            String resourceType = cloudinaryResourceType(resolvedMimeType, extension);
+            cloudinary.uploader().destroy(storageKey, ObjectUtils.asMap("resource_type", resourceType));
         } catch (IOException exception) {
             throw new StorageException("Could not delete file from storage", exception);
         } catch (RuntimeException exception) {

@@ -26,10 +26,15 @@ public class LinkPreviewConsumer {
             event.resourceId(), event.url(), event.force());
 
         try {
-            resourceService.processLinkPreview(event.resourceId(), event.force());
+            resourceService.processLinkPreview(event.resourceId(), event.url(), event.force());
             log.info("Successfully processed link preview requested event for resourceId={}", event.resourceId());
         } catch (Exception e) {
             log.error("Failed to process link preview requested event: {}", event, e);
+            try {
+                resourceService.markLinkPreviewFailed(event.resourceId(), e.getMessage());
+            } catch (Exception inner) {
+                log.error("Failed to mark link preview as failed", inner);
+            }
             throw e; // Rethrow to trigger retry/DLQ mechanism
         }
     }

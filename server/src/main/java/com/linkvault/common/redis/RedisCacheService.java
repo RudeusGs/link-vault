@@ -8,11 +8,13 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -161,10 +163,16 @@ public class RedisCacheService {
             return;
         }
         try {
-            Set<String> keys = redisTemplate.keys(namespacedKey(pattern));
-            if (keys != null && !keys.isEmpty()) {
-                redisTemplate.delete(keys);
-            }
+            String fullPattern = namespacedKey(pattern);
+            ScanOptions options = ScanOptions.scanOptions().match(fullPattern).count(100).build();
+            redisTemplate.execute((RedisConnection connection) -> {
+                try (Cursor<byte[]> cursor = connection.keyCommands().scan(options)) {
+                    while (cursor.hasNext()) {
+                        connection.keyCommands().del(cursor.next());
+                    }
+                }
+                return null;
+            });
         } catch (Exception exception) {
             log.warn("Redis cache pattern delete failed for pattern {}: {}", pattern, rootMessage(exception));
         }

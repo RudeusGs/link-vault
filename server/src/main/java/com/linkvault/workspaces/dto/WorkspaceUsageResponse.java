@@ -11,8 +11,10 @@ public record WorkspaceUsageResponse(
     long storageLimitBytes,
     long vaultLimit,
     long memberLimit,
+    long resourceLimit,
     boolean canUpload,
     boolean canCreateVault,
-    boolean canInviteMember
+    boolean canInviteMember,
+    boolean canCreateResource
 ) {
 }

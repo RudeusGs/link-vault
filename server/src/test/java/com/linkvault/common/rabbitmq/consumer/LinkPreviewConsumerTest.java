@@ -31,6 +31,6 @@ class LinkPreviewConsumerTest {
 
         consumer.consumeLinkPreviewRequested(event);
 
-        verify(resourceService).processLinkPreview(resourceId, true);
+        verify(resourceService).processLinkPreview(resourceId, "https://example.com", true);
     }
 }

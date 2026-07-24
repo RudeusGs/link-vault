@@ -26,41 +26,25 @@ public class RabbitMessagePublisherImpl implements RabbitMessagePublisher {
 
     @Override
     public void publishAuditLog(AuditLogEvent event) {
-        try {
-            rabbitTemplate.convertAndSend(properties.getExchange(), properties.getAuditRoutingKey(), event);
-            log.debug("Published audit log event: {}", event);
-        } catch (Exception e) {
-            log.error("Failed to publish audit log event: {}", event, e);
-        }
+        rabbitTemplate.convertAndSend(properties.getExchange(), properties.getAuditRoutingKey(), event);
+        log.debug("Published audit log event: {}", event);
     }
 
     @Override
     public void publishLinkPreviewRequested(LinkPreviewRequestedEvent event) {
-        try {
-            rabbitTemplate.convertAndSend(properties.getExchange(), properties.getPreviewRoutingKey(), event);
-            log.debug("Published link preview requested event: {}", event);
-        } catch (Exception e) {
-            log.error("Failed to publish link preview requested event: {}", event, e);
-        }
+        rabbitTemplate.convertAndSend(properties.getExchange(), properties.getPreviewRoutingKey(), event);
+        log.debug("Published link preview requested event: {}", event);
     }
 
     @Override
     public void publishNotification(NotificationEvent event) {
-        try {
-            rabbitTemplate.convertAndSend(properties.getExchange(), properties.getNotificationRoutingKey(), event);
-            log.debug("Published notification event: {}", event);
-        } catch (Exception e) {
-            log.error("Failed to publish notification event: {}", event, e);
-        }
+        rabbitTemplate.convertAndSend(properties.getExchange(), properties.getNotificationRoutingKey(), event);
+        log.debug("Published notification event: {}", event);
     }
 
     @Override
     public void publishCleanup(CleanupEvent event) {
-        try {
-            rabbitTemplate.convertAndSend(properties.getExchange(), properties.getCleanupRoutingKey(), event);
-            log.debug("Published cleanup event: {}", event);
-        } catch (Exception e) {
-            log.error("Failed to publish cleanup event: {}", event, e);
-        }
+        rabbitTemplate.convertAndSend(properties.getExchange(), properties.getCleanupRoutingKey(), event);
+        log.debug("Published cleanup event: {}", event);
     }
 }

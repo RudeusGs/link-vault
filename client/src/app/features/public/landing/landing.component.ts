@@ -157,8 +157,8 @@ export class LandingComponent {
   ];
 
   protected plans = [
-    { name: 'Free', price: '$0', description: 'For personal resource saving.', primary: false, features: ['1 workspace', 'Basic vaults', 'Link and note saving'] },
-    { name: 'Pro', price: '$8', description: 'For serious personal workflows.', primary: true, features: ['More vaults', 'File previews', 'Advanced organization'] },
-    { name: 'Team', price: '$16', description: 'For collaborative workspaces.', primary: false, features: ['Members and roles', 'Workspace invitations', 'Shared resource library'] }
+    { name: 'Free', price: '$0', description: 'For personal resource saving.', primary: false, features: ['5 vaults', '3 members', '100 MB storage'] },
+    { name: 'Pro', price: '$8', description: 'For serious personal workflows.', primary: true, features: ['50 vaults', '10 members', '5 GB storage'] },
+    { name: 'Team', price: '$16', description: 'For collaborative workspaces.', primary: false, features: ['500 vaults', '100 members', '100 GB storage'] }
   ];
 }

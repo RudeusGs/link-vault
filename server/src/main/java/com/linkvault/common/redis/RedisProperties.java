@@ -34,9 +34,13 @@ public class RedisProperties {
         private boolean enabled = true;
         private int authCapacity = 10;
         private Duration authWindow = Duration.ofMinutes(1);
+        private int registerCapacity = 3;
+        private Duration registerWindow = Duration.ofHours(1);
         private int uploadCapacity = 20;
         private Duration uploadWindow = Duration.ofMinutes(1);
         private int previewCapacity = 50;
         private Duration previewWindow = Duration.ofMinutes(1);
+        private int publicCapacity = 30;
+        private Duration publicWindow = Duration.ofMinutes(1);
     }
 }

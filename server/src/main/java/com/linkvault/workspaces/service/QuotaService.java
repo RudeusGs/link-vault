@@ -65,9 +65,11 @@ public class QuotaService {
             limits.storageLimitBytes(),
             limits.vaultLimit(),
             limits.memberLimit(),
+            limits.resourceLimit(),
             storageUsedBytes < limits.storageLimitBytes(),
             vaultCount < limits.vaultLimit(),
-            memberCount < limits.memberLimit()
+            memberCount < limits.memberLimit(),
+            resourceCount < limits.resourceLimit()
         );
     }
 
@@ -95,11 +97,19 @@ public class QuotaService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void requireCanCreateResource(Workspace workspace) {
+        WorkspaceUsageResponse usage = usage(workspace);
+        if (!usage.canCreateResource()) {
+            throw new BadRequestException(ErrorCode.QUOTA_EXCEEDED, "Workspace resource limit reached");
+        }
+    }
+
     public WorkspacePlanLimits limitsFor(WorkspacePlan plan) {
         return switch (plan == null ? WorkspacePlan.FREE : plan) {
-            case FREE -> new WorkspacePlanLimits(5, 3, 100 * MIB);
-            case PRO -> new WorkspacePlanLimits(50, 10, 5 * 1024 * MIB);
-            case TEAM -> new WorkspacePlanLimits(500, 100, 100 * 1024 * MIB);
+            case FREE -> new WorkspacePlanLimits(5, 3, 100 * MIB, 1000);
+            case PRO -> new WorkspacePlanLimits(50, 10, 5 * 1024 * MIB, 10000);
+            case TEAM -> new WorkspacePlanLimits(500, 100, 100 * 1024 * MIB, 100000);
         };
     }
 }

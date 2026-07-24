@@ -46,6 +46,7 @@ public class SecurityConfig {
                     "/api/auth/register",
                     "/api/auth/login",
                     "/api/auth/refresh",
+                    "/api/auth/logout",
                     "/api/auth/availability",
                     "/api/public/**"
                 ).permitAll()

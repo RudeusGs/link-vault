@@ -10,5 +10,5 @@ public interface StorageService {
 
     StorageFile download(String url);
 
-    void delete(String storageKey);
+    void delete(String storageKey, String mimeType, String fileName);
 }
